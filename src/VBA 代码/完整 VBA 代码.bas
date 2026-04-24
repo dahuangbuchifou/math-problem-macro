@@ -1,12 +1,15 @@
 ' ============================================================
 ' 幼升小数学题生成器 - 完整 VBA 代码
-' 版本：V2.0
+' 版本：V2.1
 ' 作者：工部尚书
 ' 日期：2026-04-24
 ' 说明：专为幼升小儿童设计的 Excel 数学题生成工具
 ' 支持：100以内加减法、两位数、三位数、连加连减、混合运算
 ' 特性：难度分级、专项练习、A4排版、多页生成、答案隐藏
 ' ============================================================
+' V2.1 更新日志：
+'   - 修复参数面板被清空 Bug（InitParameterPanel 移至 Cells.ClearContents 之后）
+'   - 修复背景颜色太淡 Bug（使用更明显的柔和颜色方案）
 ' V2.0 更新日志：
 '   - 修复 For Each 循环变量冲突 Bug
 '   - 修复答案计算重复执行 Bug
@@ -38,53 +41,53 @@ Const MAX_PAGES As Integer = 5        ' 最大页数
 ' 页面 2：绿色系
 ' 页面 3：暖色系
 ' 页面 4：紫色系
-' 页面 5：中性色系
+' 页面 5：黄色系
 
 Function GetPageColor(pageNum As Integer, questionIndex As Integer) As Long
-    ' 根据页码和题目索引返回柔和颜色
+    ' 根据页码和题目索引返回柔和但明显的颜色（V2.1 修复：颜色更明显）
     Dim colorIndex As Integer
     colorIndex = ((questionIndex - 1) \ 5) Mod 5 + 1  ' 每页内 5 种颜色轮换
     
     Select Case pageNum
         Case 1  ' 蓝色系
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(200, 220, 240)  ' 淡蓝
-                Case 2: GetPageColor = RGB(190, 215, 235)  ' 浅蓝
-                Case 3: GetPageColor = RGB(210, 225, 245)  ' 更淡蓝
-                Case 4: GetPageColor = RGB(195, 220, 240)  ' 蓝灰
-                Case 5: GetPageColor = RGB(205, 230, 245)  ' 天蓝
+                Case 1: GetPageColor = RGB(173, 216, 230)  ' 淡蓝
+                Case 2: GetPageColor = RGB(176, 224, 230)  ' 浅蓝
+                Case 3: GetPageColor = RGB(135, 206, 250)  ' 天蓝
+                Case 4: GetPageColor = RGB(189, 220, 240)  ' 更淡蓝
+                Case 5: GetPageColor = RGB(152, 210, 230)  ' 中蓝
             End Select
         Case 2  ' 绿色系
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(200, 240, 200)  ' 淡绿
-                Case 2: GetPageColor = RGB(195, 235, 195)  ' 浅绿
-                Case 3: GetPageColor = RGB(210, 245, 210)  ' 更淡绿
-                Case 4: GetPageColor = RGB(200, 240, 205)  ' 绿灰
-                Case 5: GetPageColor = RGB(205, 245, 215)  ' 草绿
+                Case 1: GetPageColor = RGB(144, 238, 144)  ' 淡绿
+                Case 2: GetPageColor = RGB(152, 251, 152)  ' 浅绿
+                Case 3: GetPageColor = RGB(173, 255, 195)  ' 草绿
+                Case 4: GetPageColor = RGB(144, 255, 160)  ' 更淡绿
+                Case 5: GetPageColor = RGB(160, 240, 160)  ' 中绿
             End Select
         Case 3  ' 暖色系
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(255, 250, 200)  ' 淡黄
-                Case 2: GetPageColor = RGB(255, 240, 195)  ' 浅黄
-                Case 3: GetPageColor = RGB(255, 255, 210)  ' 更淡黄
-                Case 4: GetPageColor = RGB(255, 245, 200)  ' 黄灰
-                Case 5: GetPageColor = RGB(255, 250, 215)  ' 米黄
+                Case 1: GetPageColor = RGB(255, 223, 186)  ' 淡橙
+                Case 2: GetPageColor = RGB(255, 218, 185)  ' 桃色
+                Case 3: GetPageColor = RGB(255, 228, 196)  ' 鹿皮色
+                Case 4: GetPageColor = RGB(255, 235, 205)  ' 兰色
+                Case 5: GetPageColor = RGB(255, 222, 173)  ' 纳瓦霍白
             End Select
         Case 4  ' 紫色系
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(230, 210, 255)  ' 淡紫
-                Case 2: GetPageColor = RGB(225, 205, 250)  ' 浅紫
-                Case 3: GetPageColor = RGB(235, 215, 255)  ' 更淡紫
-                Case 4: GetPageColor = RGB(228, 210, 252)  ' 紫灰
-                Case 5: GetPageColor = RGB(232, 218, 255)  ' 薰衣草
+                Case 1: GetPageColor = RGB(221, 160, 221)  ' 梅红
+                Case 2: GetPageColor = RGB(230, 190, 230)  ' 淡紫
+                Case 3: GetPageColor = RGB(216, 191, 216)  ' 蓟色
+                Case 4: GetPageColor = RGB(224, 176, 224)  ' 浅紫
+                Case 5: GetPageColor = RGB(208, 180, 208)  ' 中紫
             End Select
-        Case 5  ' 中性色系
+        Case 5  ' 黄色系
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(235, 235, 235)  ' 淡灰
-                Case 2: GetPageColor = RGB(240, 240, 240)  ' 浅灰
-                Case 3: GetPageColor = RGB(230, 230, 230)  ' 更淡灰
-                Case 4: GetPageColor = RGB(238, 238, 238)  ' 中灰
-                Case 5: GetPageColor = RGB(242, 242, 242)  ' 银灰
+                Case 1: GetPageColor = RGB(255, 250, 205)  ' 柠檬青
+                Case 2: GetPageColor = RGB(255, 248, 220)  ' 玉米色
+                Case 3: GetPageColor = RGB(255, 255, 224)  ' 淡黄
+                Case 4: GetPageColor = RGB(250, 250, 210)  ' 更淡黄
+                Case 5: GetPageColor = RGB(245, 245, 220)  ' 象牙白
             End Select
     End Select
 End Function
@@ -584,6 +587,16 @@ Sub GenerateQuestions()
     
     ' 初始化工作表
     InitializeSheets
+    
+    ' 清除旧数据（先清除，再初始化参数面板！）
+    wsQuestion.Cells.ClearContents
+    wsQuestion.Cells.ClearFormats
+    wsQuestion.Cells.Interior.ColorIndex = xlNone
+    wsAnswer.Cells.ClearContents
+    wsAnswer.Cells.ClearFormats
+    wsAnswer.Cells.Interior.ColorIndex = xlNone
+    
+    ' 重新初始化参数面板（在清除之后！）
     InitParameterPanel
     
     ' 获取参数
@@ -609,14 +622,6 @@ Sub GenerateQuestions()
     ' 更新状态
     wsQuestion.Range("H4").Value = "生成中..."
     wsQuestion.Range("H4").Interior.Color = RGB(255, 250, 200)
-    
-    ' 清除旧数据
-    wsQuestion.Cells.ClearContents
-    wsQuestion.Cells.ClearFormats
-    wsQuestion.Cells.Interior.ColorIndex = xlNone
-    wsAnswer.Cells.ClearContents
-    wsAnswer.Cells.ClearFormats
-    wsAnswer.Cells.Interior.ColorIndex = xlNone
     
     ' 清除旧的分页符
     wsQuestion.ResetAllPageBreaks
@@ -855,13 +860,15 @@ Sub ResetSettings()
     On Error Resume Next
     
     InitializeSheets
-    InitParameterPanel
     
-    ' 清除题目
+    ' 清除题目（先清除，再初始化参数面板！）
     wsQuestion.Cells.ClearContents
     wsQuestion.Cells.ClearFormats
     wsQuestion.Cells.Interior.ColorIndex = xlNone
     wsAnswer.Visible = xlSheetVeryHidden
+    
+    ' 重新初始化参数面板（在清除之后！）
+    InitParameterPanel
     
     ' 清除分页符
     wsQuestion.ResetAllPageBreaks
