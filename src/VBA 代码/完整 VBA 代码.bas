@@ -1,12 +1,19 @@
 ' ============================================================
 ' 幼升小数学题生成器 - 完整 VBA 代码
-' 版本：V2.1
+' 版本：V2.2.20260424.2130
 ' 作者：工部尚书
-' 日期：2026-04-24
+' 创建日期：2026-04-24 19:00
+' 最后更新：2026-04-24 21:30
 ' 说明：专为幼升小儿童设计的 Excel 数学题生成工具
 ' 支持：100以内加减法、两位数、三位数、连加连减、混合运算
 ' 特性：难度分级、专项练习、A4排版、多页生成、答案隐藏
 ' ============================================================
+' V2.2 更新日志：
+'   【修复】参数被刷新 Bug：GenerateQuestions 先保存用户选择再清除面板
+'   【修复】打印布局：改为 5列×5行=25题/页，更符合 A4 打印比例
+'   【新增】打印模式选项：彩色模式（屏幕查看）/ 黑白模式（打印省墨）
+'   【优化】颜色方案：改为极淡背景 + 细边框，打印友好不浪费墨水
+'   【优化】版面美感：增大行高、调整字体、页边距合理
 ' V2.1 更新日志：
 '   - 修复参数面板被清空 Bug（InitParameterPanel 移至 Cells.ClearContents 之后）
 '   - 修复背景颜色太淡 Bug（使用更明显的柔和颜色方案）
@@ -17,8 +24,8 @@
 '   - 移除无意义的负数判断逻辑
 '   - 新增两位数加法/减法专项
 '   - 新增三位数混合运算专项
-'   - 新增 A4 版面自动填充（5列×10行=50题/页）
-'   - 新增多页生成（最多 5 页，每页不同颜色方案）
+'   - 新增 A4 版面自动填充（5列×5行=25题/页）
+'   - 新增多页生成（最多 5 页）
 '   - 新增页间分隔线和自动分页符
 '   - 更新难度等级和练习模式下拉菜单
 '   - 新增 G7/H7 页数参数
@@ -30,64 +37,65 @@ Dim wsAnswer As Worksheet        ' 答案页工作表
 Dim wsRecord As Worksheet        ' 练习记录工作表
 
 ' ==================== 页面布局常量 ====================
-Const COLS_PER_PAGE As Integer = 5    ' 每页列数
-Const ROWS_PER_PAGE As Integer = 10   ' 每页行数
-Const QUESTIONS_PER_PAGE As Integer = 50  ' 每页题目数 (5×10)
-Const MAX_PAGES As Integer = 5        ' 最大页数
+Const COLS_PER_PAGE As Integer = 5     ' 每页列数
+Const ROWS_PER_PAGE As Integer = 5     ' 每页行数 (V2.2: 5行，25题/页)
+Const QUESTIONS_PER_PAGE As Integer = 25   ' 每页题目数 (5×5)
+Const MAX_PAGES As Integer = 5         ' 最大页数
 
-' ==================== 柔和颜色方案 ====================
+' ==================== 打印友好颜色方案 ====================
+' V2.2: 极淡背景色 + 细边框，打印省墨
 ' 每页使用不同的颜色方案，页内每 5 题轮换
-' 页面 1：蓝色系
-' 页面 2：绿色系
-' 页面 3：暖色系
-' 页面 4：紫色系
-' 页面 5：黄色系
+' 页面 1：蓝色系（极淡）
+' 页面 2：绿色系（极淡）
+' 页面 3：暖色系（极淡）
+' 页面 4：紫色系（极淡）
+' 页面 5：黄色系（极淡）
 
 Function GetPageColor(pageNum As Integer, questionIndex As Integer) As Long
-    ' 根据页码和题目索引返回柔和但明显的颜色（V2.1 修复：颜色更明显）
+    ' 根据页码和题目索引返回极淡但可区分的颜色（V2.2 打印友好）
     Dim colorIndex As Integer
     colorIndex = ((questionIndex - 1) \ 5) Mod 5 + 1  ' 每页内 5 种颜色轮换
     
     Select Case pageNum
-        Case 1  ' 蓝色系
+        Case 1  ' 蓝色系（极淡）
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(173, 216, 230)  ' 淡蓝
-                Case 2: GetPageColor = RGB(176, 224, 230)  ' 浅蓝
-                Case 3: GetPageColor = RGB(135, 206, 250)  ' 天蓝
-                Case 4: GetPageColor = RGB(189, 220, 240)  ' 更淡蓝
-                Case 5: GetPageColor = RGB(152, 210, 230)  ' 中蓝
+                Case 1: GetPageColor = RGB(232, 243, 251)  ' 极淡蓝
+                Case 2: GetPageColor = RGB(225, 240, 252)  ' 更淡蓝
+                Case 3: GetPageColor = RGB(218, 238, 248)  ' 浅蓝
+                Case 4: GetPageColor = RGB(228, 242, 250)  ' 淡蓝
+                Case 5: GetPageColor = RGB(235, 245, 252)  ' 最淡蓝
             End Select
-        Case 2  ' 绿色系
+        Case 2  ' 绿色系（极淡）
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(144, 238, 144)  ' 淡绿
-                Case 2: GetPageColor = RGB(152, 251, 152)  ' 浅绿
-                Case 3: GetPageColor = RGB(173, 255, 195)  ' 草绿
-                Case 4: GetPageColor = RGB(144, 255, 160)  ' 更淡绿
-                Case 5: GetPageColor = RGB(160, 240, 160)  ' 中绿
+                Case 1: GetPageColor = RGB(230, 248, 230)  ' 极淡绿
+                Case 2: GetPageColor = RGB(225, 245, 225)  ' 更淡绿
+                Case 3: GetPageColor = RGB(235, 250, 235)  ' 浅绿
+                Case 4: GetPageColor = RGB(228, 247, 228)  ' 淡绿
+                Case 5: GetPageColor = RGB(238, 252, 238)  ' 最淡绿
             End Select
-        Case 3  ' 暖色系
+        Case 3  ' 暖色系（极淡）
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(255, 223, 186)  ' 淡橙
-                Case 2: GetPageColor = RGB(255, 218, 185)  ' 桃色
-                Case 3: GetPageColor = RGB(255, 228, 196)  ' 鹿皮色
-                Case 4: GetPageColor = RGB(255, 235, 205)  ' 兰色
-                Case 5: GetPageColor = RGB(255, 222, 173)  ' 纳瓦霍白
+                Case 1: GetPageColor = RGB(255, 244, 232)  ' 极淡橙
+                Case 2: GetPageColor = RGB(255, 240, 225)  ' 更淡橙
+                Case 3: GetPageColor = RGB(255, 248, 238)  ' 浅橙
+                Case 4: GetPageColor = RGB(255, 242, 230)  ' 淡橙
+                Case 5: GetPageColor = RGB(255, 250, 242)  ' 最淡橙
             End Select
-        Case 4  ' 紫色系
+        Case 4  ' 紫色系（极淡）
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(221, 160, 221)  ' 梅红
-                Case 2: GetPageColor = RGB(230, 190, 230)  ' 淡紫
-                Case 3: GetPageColor = RGB(216, 191, 216)  ' 蓟色
-                Case 4: GetPageColor = RGB(224, 176, 224)  ' 浅紫
-                Case 5: GetPageColor = RGB(208, 180, 208)  ' 中紫
+                Case 1: GetPageColor = RGB(245, 235, 248)  ' 极淡紫
+                Case 2: GetPageColor = RGB(240, 230, 245)  ' 更淡紫
+                Case 3: GetPageColor = RGB(248, 240, 250)  ' 浅紫
+                Case 4: GetPageColor = RGB(243, 233, 247)  ' 淡紫
+                Case 5: GetPageColor = RGB(250, 243, 252)  ' 最淡紫
             End Select
-        Case 5  ' 黄色系
+        Case 5  ' 黄色系（极淡）
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(255, 250, 205)  ' 柠檬青
-                Case 2: GetPageColor = RGB(255, 248, 220)  ' 玉米色
-                Case 3: GetPageColor = RGB(255, 255, 224)  ' 淡黄
-                Case 4: GetPageColor = RGB(250, 250, 210)  ' 更淡黄
-                Case 5: GetPageColor = RGB(245, 245, 220)  ' 象牙白
+                Case 1: GetPageColor = RGB(255, 255, 229)  ' 极淡黄
+                Case 2: GetPageColor = RGB(255, 255, 220)  ' 更淡黄
+                Case 3: GetPageColor = RGB(255, 255, 235)  ' 浅黄
+                Case 4: GetPageColor = RGB(255, 255, 225)  ' 淡黄
+                Case 5: GetPageColor = RGB(255, 255, 240)  ' 最淡黄
             End Select
     End Select
 End Function
@@ -165,29 +173,31 @@ Sub InitParameterPanel()
         .Range("G5").Value = "难度等级"
         .Range("G6").Value = "练习模式"
         .Range("G7").Value = "生成页数"
+        .Range("G8").Value = "打印模式"
         
         ' 参数值（H列）- 默认值
         .Range("H1").Value = 100
-        .Range("H2").Value = 50
+        .Range("H2").Value = 25
         .Range("H3").Value = 0
         .Range("H4").Value = "就绪"
         .Range("H4").Interior.Color = RGB(200, 230, 255)
         .Range("H5").Value = "中级"
         .Range("H6").Value = "混合运算"
         .Range("H7").Value = 1
+        .Range("H8").Value = "彩色"
         
         ' 设置标签样式
-        .Range("G1:G7").Font.Bold = True
-        .Range("G1:G7").Font.Size = 11
-        .Range("G1:G7").HorizontalAlignment = xlRight
-        .Range("G1:G7").VerticalAlignment = xlCenter
+        .Range("G1:G8").Font.Bold = True
+        .Range("G1:G8").Font.Size = 11
+        .Range("G1:G8").HorizontalAlignment = xlRight
+        .Range("G1:G8").VerticalAlignment = xlCenter
         
         ' 设置参数值样式
-        .Range("H1:H7").Font.Size = 11
-        .Range("H1:H7").HorizontalAlignment = xlCenter
-        .Range("H1:H7").VerticalAlignment = xlCenter
-        .Range("H1:H7").Borders.LineStyle = xlContinuous
-        .Range("H1:H7").Borders.Color = RGB(200, 200, 200)
+        .Range("H1:H8").Font.Size = 11
+        .Range("H1:H8").HorizontalAlignment = xlCenter
+        .Range("H1:H8").VerticalAlignment = xlCenter
+        .Range("H1:H8").Borders.LineStyle = xlContinuous
+        .Range("H1:H8").Borders.Color = RGB(200, 200, 200)
         
         ' 设置列宽
         .Columns("G").ColumnWidth = 14
@@ -217,6 +227,15 @@ Sub InitParameterPanel()
         .Delete
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
             Operator:=xlBetween, Formula1:="1,2,3,4,5"
+        .IgnoreBlank = True
+        .InCellDropdown = True
+    End With
+    
+    ' 设置打印模式下拉菜单（H8）
+    With wsQuestion.Range("H8").Validation
+        .Delete
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
+            Operator:=xlBetween, Formula1:="彩色,黑白"
         .IgnoreBlank = True
         .InCellDropdown = True
     End With
@@ -584,11 +603,19 @@ Sub GenerateQuestions()
     Dim sepRow As Integer
     Dim totalRows As Integer
     Dim j As Integer
+    Dim printMode As String
+    
+    ' ★ V2.2 修复：先保存用户选择的所有参数（在清除之前！）
+    difficulty = Trim(wsQuestion.Range("H5").Value)
+    practiceMode = Trim(wsQuestion.Range("H6").Value)
+    questionCount = Val(wsQuestion.Range("H2").Value)
+    totalPages = Val(wsQuestion.Range("H7").Value)
+    printMode = Trim(wsQuestion.Range("H8").Value)
     
     ' 初始化工作表
     InitializeSheets
     
-    ' 清除旧数据（先清除，再初始化参数面板！）
+    ' 清除旧数据
     wsQuestion.Cells.ClearContents
     wsQuestion.Cells.ClearFormats
     wsQuestion.Cells.Interior.ColorIndex = xlNone
@@ -596,14 +623,16 @@ Sub GenerateQuestions()
     wsAnswer.Cells.ClearFormats
     wsAnswer.Cells.Interior.ColorIndex = xlNone
     
-    ' 重新初始化参数面板（在清除之后！）
-    InitParameterPanel
+    ' ★ V2.2 修复：不再调用 InitParameterPanel 覆盖用户选择！
+    ' 只重新初始化参数面板的标签和样式（不覆盖值）
+    InitParameterPanel_NoReset
     
-    ' 获取参数
-    difficulty = Trim(wsQuestion.Range("H5").Value)
-    practiceMode = Trim(wsQuestion.Range("H6").Value)
-    questionCount = Val(wsQuestion.Range("H2").Value)
-    totalPages = Val(wsQuestion.Range("H7").Value)
+    ' ★ V2.2 修复：恢复用户之前选择的值
+    wsQuestion.Range("H5").Value = difficulty
+    wsQuestion.Range("H6").Value = practiceMode
+    wsQuestion.Range("H2").Value = questionCount
+    wsQuestion.Range("H7").Value = totalPages
+    wsQuestion.Range("H8").Value = printMode
     
     ' 参数校验
     If questionCount <= 0 Then questionCount = QUESTIONS_PER_PAGE
@@ -633,16 +662,16 @@ Sub GenerateQuestions()
     ' ==================== 设置题目页格式 ====================
     With wsQuestion
         .Cells.Font.Name = "微软雅黑"
-        .Cells.Font.Size = 14
+        .Cells.Font.Size = 16
         .Cells.HorizontalAlignment = xlCenter
         .Cells.VerticalAlignment = xlCenter
         
-        ' 设置列宽
+        ' 设置列宽（V2.2: 适当加宽，25题布局更舒展）
         For j = 1 To COLS_PER_PAGE
-            .Columns(j).ColumnWidth = 20
+            .Columns(j).ColumnWidth = 22
         Next j
         
-        ' 设置行高
+        ' 设置行高（V2.2: 增大行高，25题布局更美观）
         For j = 1 To totalRows
             ' 判断是否为分隔行
             Dim isSep As Boolean
@@ -656,9 +685,9 @@ Sub GenerateQuestions()
             Next p
             
             If isSep Then
-                .Rows(j).RowHeight = 15
+                .Rows(j).RowHeight = 12
             Else
-                .Rows(j).RowHeight = 28
+                .Rows(j).RowHeight = 36
             End If
         Next j
         
@@ -666,9 +695,9 @@ Sub GenerateQuestions()
         For p = 1 To totalPages - 1
             sepRow = p * (ROWS_PER_PAGE + 1)
             With .Rows(sepRow)
-                .Borders(xlEdgeBottom).Weight = xlMedium
-                .Borders(xlEdgeBottom).Color = RGB(150, 150, 150)
-                .Interior.Color = RGB(245, 245, 245)
+                .Borders(xlEdgeBottom).Weight = xlThin
+                .Borders(xlEdgeBottom).Color = RGB(180, 180, 180)
+                .Interior.Color = RGB(250, 250, 250)
             End With
         Next p
         
@@ -685,21 +714,25 @@ Sub GenerateQuestions()
         .PageSetup.Zoom = False
         .PageSetup.FitToPagesWide = 1
         .PageSetup.FitToPagesTall = totalPages
+        .PageSetup.TopMargin = Application.CentimetersToPoints(1.5)
+        .PageSetup.BottomMargin = Application.CentimetersToPoints(1.5)
+        .PageSetup.LeftMargin = Application.CentimetersToPoints(1.2)
+        .PageSetup.RightMargin = Application.CentimetersToPoints(1.2)
     End With
     
     ' ==================== 设置答案页格式 ====================
     With wsAnswer
         .Cells.Font.Name = "微软雅黑"
-        .Cells.Font.Size = 14
+        .Cells.Font.Size = 16
         .Cells.HorizontalAlignment = xlCenter
         .Cells.VerticalAlignment = xlCenter
         .Cells.Font.Color = RGB(200, 50, 50)  ' 答案用红色
         
         For j = 1 To COLS_PER_PAGE
-            .Columns(j).ColumnWidth = 20
+            .Columns(j).ColumnWidth = 22
         Next j
         For j = 1 To totalRows
-            .Rows(j).RowHeight = 28
+            .Rows(j).RowHeight = 36
         Next j
     End With
     
@@ -779,13 +812,36 @@ Sub GenerateQuestions()
         ' 提取答案
         answerText = ExtractAnswer(questionText)
         
+        ' ★ V2.2: 根据打印模式设置颜色
+        If printMode = "黑白" Then
+            ' 黑白模式：无背景色，只加细边框
+            wsQuestion.Cells(row, col).Interior.ColorIndex = xlNone
+            wsQuestion.Cells(row, col).Borders.LineStyle = xlContinuous
+            wsQuestion.Cells(row, col).Borders.Color = RGB(180, 180, 180)
+            wsQuestion.Cells(row, col).Borders.Weight = xlThin
+            
+            wsAnswer.Cells(row, col).Interior.ColorIndex = xlNone
+            wsAnswer.Cells(row, col).Borders.LineStyle = xlContinuous
+            wsAnswer.Cells(row, col).Borders.Color = RGB(180, 180, 180)
+            wsAnswer.Cells(row, col).Borders.Weight = xlThin
+        Else
+            ' 彩色模式：极淡背景 + 细边框
+            wsQuestion.Cells(row, col).Interior.Color = GetPageColor(currentPage, pageQuestionIndex)
+            wsQuestion.Cells(row, col).Borders.LineStyle = xlContinuous
+            wsQuestion.Cells(row, col).Borders.Color = RGB(200, 210, 220)
+            wsQuestion.Cells(row, col).Borders.Weight = xlHairline
+            
+            wsAnswer.Cells(row, col).Interior.Color = GetPageColor(currentPage, pageQuestionIndex)
+            wsAnswer.Cells(row, col).Borders.LineStyle = xlContinuous
+            wsAnswer.Cells(row, col).Borders.Color = RGB(200, 210, 220)
+            wsAnswer.Cells(row, col).Borders.Weight = xlHairline
+        End If
+        
         ' 写入题目
         wsQuestion.Cells(row, col).Value = questionText
-        wsQuestion.Cells(row, col).Interior.Color = GetPageColor(currentPage, pageQuestionIndex)
         
         ' 写入答案
         wsAnswer.Cells(row, col).Value = answerText
-        wsAnswer.Cells(row, col).Interior.Color = GetPageColor(currentPage, pageQuestionIndex)
         
         questionNum = questionNum + 1
     Next i
@@ -806,7 +862,8 @@ Sub GenerateQuestions()
            "难度：" & difficulty & vbCrLf & _
            "模式：" & practiceMode & vbCrLf & _
            "题目数：" & questionNum & " 道" & vbCrLf & _
-           "页数：" & totalPages & " 页", _
+           "页数：" & totalPages & " 页" & vbCrLf & _
+           "打印：" & printMode & "模式", _
            vbInformation, "生成成功"
     
     Exit Sub
@@ -815,6 +872,79 @@ ErrorHandler:
     wsQuestion.Range("H4").Value = "错误"
     wsQuestion.Range("H4").Interior.Color = RGB(255, 200, 200)
     MsgBox "❌ 生成题目时出错：" & vbCrLf & Err.Description, vbCritical, "错误"
+End Sub
+
+' ==================== 初始化参数面板（不覆盖用户值） ====================
+' V2.2 新增：只设置标签、样式和下拉菜单，不覆盖 H 列已有值
+Sub InitParameterPanel_NoReset()
+    On Error Resume Next
+    
+    With wsQuestion
+        ' 只设置标签（不覆盖 H 列的值）
+        .Range("G1").Value = "最大数字范围"
+        .Range("G2").Value = "题目数量"
+        .Range("G3").Value = "负数概率 (%)"
+        .Range("G4").Value = "当前状态"
+        .Range("G5").Value = "难度等级"
+        .Range("G6").Value = "练习模式"
+        .Range("G7").Value = "生成页数"
+        .Range("G8").Value = "打印模式"
+        
+        ' 只设置标签样式
+        .Range("G1:G8").Font.Bold = True
+        .Range("G1:G8").Font.Size = 11
+        .Range("G1:G8").HorizontalAlignment = xlRight
+        .Range("G1:G8").VerticalAlignment = xlCenter
+        
+        ' 只设置参数值区域的样式（不覆盖值！）
+        .Range("H1:H8").Font.Size = 11
+        .Range("H1:H8").HorizontalAlignment = xlCenter
+        .Range("H1:H8").VerticalAlignment = xlCenter
+        .Range("H1:H8").Borders.LineStyle = xlContinuous
+        .Range("H1:H8").Borders.Color = RGB(200, 200, 200)
+        
+        ' 设置列宽
+        .Columns("G").ColumnWidth = 14
+        .Columns("H").ColumnWidth = 12
+    End With
+    
+    ' 设置难度等级下拉菜单（H5）
+    With wsQuestion.Range("H5").Validation
+        .Delete
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
+            Operator:=xlBetween, Formula1:="初级,中级,高级,两位数,三位数"
+        .IgnoreBlank = True
+        .InCellDropdown = True
+    End With
+    
+    ' 设置练习模式下拉菜单（H6）
+    With wsQuestion.Range("H6").Validation
+        .Delete
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
+            Operator:=xlBetween, Formula1:="混合运算,连加专项,连减专项,进位加法,退位减法,两位数加法,两位数减法,三位数混合"
+        .IgnoreBlank = True
+        .InCellDropdown = True
+    End With
+    
+    ' 设置页数下拉菜单（H7）
+    With wsQuestion.Range("H7").Validation
+        .Delete
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
+            Operator:=xlBetween, Formula1:="1,2,3,4,5"
+        .IgnoreBlank = True
+        .InCellDropdown = True
+    End With
+    
+    ' 设置打印模式下拉菜单（H8）
+    With wsQuestion.Range("H8").Validation
+        .Delete
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
+            Operator:=xlBetween, Formula1:="彩色,黑白"
+        .IgnoreBlank = True
+        .InCellDropdown = True
+    End With
+    
+    On Error GoTo 0
 End Sub
 
 ' ==================== 显示/隐藏答案 ====================
@@ -861,20 +991,20 @@ Sub ResetSettings()
     
     InitializeSheets
     
-    ' 清除题目（先清除，再初始化参数面板！）
+    ' 清除题目
     wsQuestion.Cells.ClearContents
     wsQuestion.Cells.ClearFormats
     wsQuestion.Cells.Interior.ColorIndex = xlNone
     wsAnswer.Visible = xlSheetVeryHidden
     
-    ' 重新初始化参数面板（在清除之后！）
+    ' 重新初始化参数面板（重置时会覆盖为默认值，这是预期行为）
     InitParameterPanel
     
     ' 清除分页符
     wsQuestion.ResetAllPageBreaks
     
     MsgBox "✅ 设置已重置为默认值！" & vbCrLf & _
-           "难度：中级 | 模式：混合运算 | 题数：50 | 页数：1", _
+           "难度：中级 | 模式：混合运算 | 题数：25 | 页数：1 | 打印：彩色", _
            vbInformation, "重置成功"
     
     On Error GoTo 0
