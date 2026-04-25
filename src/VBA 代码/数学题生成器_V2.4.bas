@@ -1,14 +1,19 @@
 ' ============================================================
 ' 幼升小数学题生成器 - VBA 代码
-' 版本：V2.4.3.20260425.1445
+' 版本：V2.4.4.20260425.1520
 ' 文件名：数学题生成器_V2.4.bas
 ' 作者：工部尚书
 ' 创建日期：2026-04-24 19:00
-' 最后更新：2026-04-25 14:45
+' 最后更新：2026-04-25 15:20
 ' 说明：专为幼升小儿童设计的 Excel 数学题生成工具
 ' 支持：100以内加减法、两位数、三位数、连加连减、混合运算
 ' 特性：难度分级、专项练习、A4排版、多页生成、答案隐藏
 ' ============================================================
+' V2.4.4 更新日志：
+'   【新增】打印题头（标题+姓名+日期+用时+正确率）
+'   【新增】题目答案框（= ___ 格式）
+'   【优化】颜色对比度增强（浅色但有对比）
+'   【修复】参数面板不打印（隐藏 G/H 列）
 ' V2.4.3 更新日志：
 '   【修复】运行时错误 91：InitializeSheets 移到访问 wsQuestion 之前
 ' V2.4.2 更新日志：
@@ -74,45 +79,45 @@ Function GetPageColor(pageNum As Integer, questionIndex As Integer) As Long
     colorIndex = ((questionIndex - 1) \ 5) Mod 5 + 1  ' 每页内 5 种颜色轮换
     
     Select Case pageNum
-        Case 1  ' 蓝色系（极淡）
+        Case 1  ' 蓝色系（柔和）
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(232, 243, 251)  ' 极淡蓝
-                Case 2: GetPageColor = RGB(225, 240, 252)  ' 更淡蓝
-                Case 3: GetPageColor = RGB(218, 238, 248)  ' 浅蓝
-                Case 4: GetPageColor = RGB(228, 242, 250)  ' 淡蓝
-                Case 5: GetPageColor = RGB(235, 245, 252)  ' 最淡蓝
+                Case 1: GetPageColor = RGB(210, 230, 250)  ' 柔和蓝
+                Case 2: GetPageColor = RGB(200, 225, 245)  ' 稍深蓝
+                Case 3: GetPageColor = RGB(215, 235, 252)  ' 浅蓝
+                Case 4: GetPageColor = RGB(205, 228, 248)  ' 淡蓝
+                Case 5: GetPageColor = RGB(220, 238, 253)  ' 最浅蓝
             End Select
-        Case 2  ' 绿色系（极淡）
+        Case 2  ' 绿色系（柔和）
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(230, 248, 230)  ' 极淡绿
-                Case 2: GetPageColor = RGB(225, 245, 225)  ' 更淡绿
-                Case 3: GetPageColor = RGB(235, 250, 235)  ' 浅绿
-                Case 4: GetPageColor = RGB(228, 247, 228)  ' 淡绿
-                Case 5: GetPageColor = RGB(238, 252, 238)  ' 最淡绿
+                Case 1: GetPageColor = RGB(200, 240, 200)  ' 柔和绿
+                Case 2: GetPageColor = RGB(195, 235, 195)  ' 稍深绿
+                Case 3: GetPageColor = RGB(210, 245, 210)  ' 浅绿
+                Case 4: GetPageColor = RGB(205, 242, 205)  ' 淡绿
+                Case 5: GetPageColor = RGB(215, 248, 215)  ' 最浅绿
             End Select
-        Case 3  ' 暖色系（极淡）
+        Case 3  ' 暖色系（柔和）
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(255, 244, 232)  ' 极淡橙
-                Case 2: GetPageColor = RGB(255, 240, 225)  ' 更淡橙
-                Case 3: GetPageColor = RGB(255, 248, 238)  ' 浅橙
-                Case 4: GetPageColor = RGB(255, 242, 230)  ' 淡橙
-                Case 5: GetPageColor = RGB(255, 250, 242)  ' 最淡橙
+                Case 1: GetPageColor = RGB(255, 220, 180)  ' 柔和橙
+                Case 2: GetPageColor = RGB(255, 215, 170)  ' 稍深橙
+                Case 3: GetPageColor = RGB(255, 228, 195)  ' 浅橙
+                Case 4: GetPageColor = RGB(255, 222, 185)  ' 淡橙
+                Case 5: GetPageColor = RGB(255, 235, 205)  ' 最浅橙
             End Select
-        Case 4  ' 紫色系（极淡）
+        Case 4  ' 紫色系（柔和）
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(245, 235, 248)  ' 极淡紫
-                Case 2: GetPageColor = RGB(240, 230, 245)  ' 更淡紫
-                Case 3: GetPageColor = RGB(248, 240, 250)  ' 浅紫
-                Case 4: GetPageColor = RGB(243, 233, 247)  ' 淡紫
-                Case 5: GetPageColor = RGB(250, 243, 252)  ' 最淡紫
+                Case 1: GetPageColor = RGB(230, 200, 240)  ' 柔和紫
+                Case 2: GetPageColor = RGB(225, 195, 235)  ' 稍深紫
+                Case 3: GetPageColor = RGB(238, 210, 248)  ' 浅紫
+                Case 4: GetPageColor = RGB(232, 205, 242)  ' 淡紫
+                Case 5: GetPageColor = RGB(245, 218, 250)  ' 最浅紫
             End Select
-        Case 5  ' 黄色系（极淡）
+        Case 5  ' 黄色系（柔和）
             Select Case colorIndex
-                Case 1: GetPageColor = RGB(255, 255, 229)  ' 极淡黄
-                Case 2: GetPageColor = RGB(255, 255, 220)  ' 更淡黄
-                Case 3: GetPageColor = RGB(255, 255, 235)  ' 浅黄
-                Case 4: GetPageColor = RGB(255, 255, 225)  ' 淡黄
-                Case 5: GetPageColor = RGB(255, 255, 240)  ' 最淡黄
+                Case 1: GetPageColor = RGB(255, 255, 180)  ' 柔和黄
+                Case 2: GetPageColor = RGB(255, 255, 170)  ' 稍深黄
+                Case 3: GetPageColor = RGB(255, 255, 195)  ' 浅黄
+                Case 4: GetPageColor = RGB(255, 255, 185)  ' 淡黄
+                Case 5: GetPageColor = RGB(255, 255, 205)  ' 最浅黄
             End Select
     End Select
 End Function
@@ -891,14 +896,17 @@ Sub GenerateQuestions()
             wsAnswer.Cells(row, col).Borders.Weight = xlHairline
         End If
         
-        ' 写入题目
-        wsQuestion.Cells(row, col).Value = questionText
+        ' 写入题目（添加答案下划线）
+        wsQuestion.Cells(row, col).Value = questionText & " ___"
         
         ' 写入答案
         wsAnswer.Cells(row, col).Value = answerText
         
         questionNum = questionNum + 1
     Next i
+    
+    ' ==================== 打印题头 ====================
+    Call PrintHeader(wsQuestion, difficulty, practiceMode, colsPerPage)
     
     ' ==================== 更新状态 ====================
     wsQuestion.Range("H4").Value = "已完成（" & questionNum & "题，" & totalPages & "页）"
@@ -932,6 +940,53 @@ End Sub
 ' ==================== 初始化参数面板（不覆盖用户值） ====================
 ' V2.3: 只设置标签、样式和下拉菜单，不覆盖 H 列已有值
 ' 参数面板布局：G8=每页列数, G9=打印模式
+
+' ==================== 打印题头 ====================
+Sub PrintHeader(ws As Worksheet, difficulty As String, practiceMode As String, colsPerPage As Integer)
+    Dim titleRow As Integer
+    Dim infoRow As Integer
+    Dim lastCol As Integer
+    
+    titleRow = 1
+    infoRow = 2
+    
+    ' 标题行（合并单元格）
+    lastCol = colsPerPage
+    With ws.Range(ws.Cells(titleRow, 1), ws.Cells(titleRow, lastCol))
+        .Merge
+        .Value = "幼升小数学专项练习（" & difficulty & " - " & practiceMode & ")"
+        .Font.Name = "微软雅黑"
+        .Font.Size = 16
+        .Font.Bold = True
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+    End With
+    
+    ' 信息行
+    ' 姓名
+    ws.Range("A" & infoRow).Value = "姓名：__________"
+    ws.Range("A" & infoRow).Font.Name = "微软雅黑"
+    ws.Range("A" & infoRow).Font.Size = 10
+    
+    ' 日期
+    ws.Range("D" & infoRow).Value = "日期：____月____日"
+    ws.Range("D" & infoRow).Font.Name = "微软雅黑"
+    ws.Range("D" & infoRow).Font.Size = 10
+    
+    ' 用时
+    ws.Range("G" & infoRow).Value = "用时：____分钟"
+    ws.Range("G" & infoRow).Font.Name = "微软雅黑"
+    ws.Range("G" & infoRow).Font.Size = 10
+    
+    ' 正确率
+    ws.Range("J" & infoRow).Value = "正确率：____%"
+    ws.Range("J" & infoRow).Font.Name = "微软雅黑"
+    ws.Range("J" & infoRow).Font.Size = 10
+    
+    ' 隐藏参数面板（G/H 列不打印）
+    ws.Columns("G:H").Hidden = True
+End Sub
+
 Sub InitParameterPanel_NoReset()
     On Error Resume Next
     
