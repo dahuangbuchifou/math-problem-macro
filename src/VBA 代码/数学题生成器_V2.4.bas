@@ -1,14 +1,17 @@
 ' ============================================================
 ' 幼升小数学题生成器 - VBA 代码
-' 版本：V2.4.1.20260425.1315
+' 版本：V2.4.2.20260425.1425
 ' 文件名：数学题生成器_V2.4.bas
 ' 作者：工部尚书
 ' 创建日期：2026-04-24 19:00
-' 最后更新：2026-04-25 13:15
+' 最后更新：2026-04-25 14:25
 ' 说明：专为幼升小儿童设计的 Excel 数学题生成工具
 ' 支持：100以内加减法、两位数、三位数、连加连减、混合运算
 ' 特性：难度分级、专项练习、A4排版、多页生成、答案隐藏
 ' ============================================================
+' V2.4.2 更新日志：
+'   【修复】删除 Workbook_Open 和 Workbook_BeforeClose（不应在.bas 模块中）
+'   【修复】MsgBox 语法错误（中文引号问题）
 ' V2.4.1 更新日志：
 '   【修复】Select Case 语法错误（编译报错）
 '   【修复】布局理解错误（严重）：改为 25行×2/3/4列=50/75/100题/页（竖版）
@@ -1127,23 +1130,4 @@ Sub ExportToPDF()
     
 ErrorHandler:
     MsgBox "❌ 导出PDF出错：" & vbCrLf & Err.Description, vbCritical, "错误"
-End Sub
-
-' ==================== 工作簿打开时初始化 ====================
-Private Sub Workbook_Open()
-    On Error Resume Next
-    Randomize  ' 初始化随机数种子
-    InitializeSheets
-    InitParameterPanel
-    On Error GoTo 0
-End Sub
-
-' ==================== 工作簿关闭时保存 ====================
-Private Sub Workbook_BeforeClose(Cancel As Boolean)
-    On Error Resume Next
-    ' 确保答案页隐藏
-    If Not wsAnswer Is Nothing Then
-        wsAnswer.Visible = xlSheetVeryHidden
-    End If
-    On Error GoTo 0
 End Sub
