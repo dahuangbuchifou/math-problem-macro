@@ -1,14 +1,18 @@
 ' ============================================================
 ' 幼升小数学题生成器 - VBA 代码
-' 版本：V2.4.6.20260425.2140
+' 版本：V2.4.7.20260425.2155
 ' 文件名：数学题生成器_V2.4.bas
 ' 作者：工部尚书
 ' 创建日期：2026-04-24 19:00
-' 最后更新：2026-04-25 21:40
+' 最后更新：2026-04-25 21:55
 ' 说明：专为幼升小儿童设计的 Excel 数学题生成工具
 ' 支持：100以内加减法、两位数、三位数、连加连减、混合运算
 ' 特性：难度分级、专项练习、A4排版、多页生成、答案隐藏
 ' ============================================================
+' V2.4.7 更新日志：
+'   【优化】行高增加（25 行布满 A4 纸）
+'   【新增】单元格边框（细边框 + 打印友好）
+'   【优化】题头布局（姓名在左/日期在右）
 ' V2.4.6 更新日志：
 '   【修复】打印预览空白页问题（设置 PrintArea + 修正分页符偏移）
 '   【优化】页边距设置（上 1cm/下 1cm/左 0.5cm/右 0.5cm）
@@ -737,21 +741,22 @@ Sub GenerateQuestions()
             .Columns(j).ColumnWidth = 20
         Next j
         
-        ' 设置行高（V2.3: 根据 colsPerPage 自适应）
-        targetRowHeight = 18  ' V2.4: 25 行均匀分布，行高 18
+        ' 设置行高（V2.4.7: 增加行高，让 25 行布满 A4 纸）
+        ' A4 可打印区域约 25cm，25 行 + 题头 2 行 + 分隔行，每行约 22-25
+        targetRowHeight = 23  ' V2.4.7: 从 18 增加到 23
         
         For j = 1 To totalRows
             ' 判断是否为分隔行
             isSep = False
             For p = 1 To totalPages - 1
-                If j = p * (colsPerPage + 1) Then
+                If j = p * (ROWS_PER_PAGE + 1) + 2 Then  ' V2.4.6: 考虑题头 2 行偏移
                     isSep = True
                     Exit For
                 End If
             Next p
             
             If isSep Then
-                .Rows(j).RowHeight = 8  ' 分隔行更窄
+                .Rows(j).RowHeight = 10  ' V2.4.7: 分隔行从 8 增加到 10
             Else
                 .Rows(j).RowHeight = targetRowHeight
             End If
@@ -801,6 +806,17 @@ Sub GenerateQuestions()
         For j = 1 To totalRows
             .Rows(j).RowHeight = targetRowHeight
         Next j
+        
+        ' V2.4.7: 答案页也添加边框
+        For r = 3 To totalRows  ' 从第 3 行开始（题头后）
+            For c = 1 To colsPerPage
+                With .Cells(r, c).Borders
+                    .LineStyle = xlContinuous
+                    .Color = RGB(200, 200, 200)
+                    .Weight = xlThin
+                End With
+            Next c
+        Next r
     End With
     
     ' ==================== 生成题目 ====================
