@@ -1,14 +1,19 @@
 ' ============================================================
 ' 幼升小数学题生成器 - VBA 代码
-' 版本：V2.4.4.20260425.1520
+' 版本：V2.4.5.20260425.1755
 ' 文件名：数学题生成器_V2.4.bas
 ' 作者：工部尚书
 ' 创建日期：2026-04-24 19:00
-' 最后更新：2026-04-25 15:20
+' 最后更新：2026-04-25 17:55
 ' 说明：专为幼升小儿童设计的 Excel 数学题生成工具
 ' 支持：100以内加减法、两位数、三位数、连加连减、混合运算
 ' 特性：难度分级、专项练习、A4排版、多页生成、答案隐藏
 ' ============================================================
+' V2.4.5 更新日志：
+'   【修复】合并单元格警告（合并前清空值 + 禁用警告）
+'   【修复】题头布局错乱（题目从第 3 行开始）
+'   【修复】参数面板未隐藏（生成完成后隐藏 G/H 列）
+'   【修复】题目数量显示？（questionNum 变量修复）
 ' V2.4.4 更新日志：
 '   【新增】打印题头（标题+姓名+日期+用时+正确率）
 '   【新增】题目答案框（= ___ 格式）
@@ -803,12 +808,12 @@ Sub GenerateQuestions()
         currentPage = ((i - 1) \ questionsPerPage) + 1
         pageQuestionIndex = ((i - 1) Mod questionsPerPage) + 1
         
-        ' 计算在工作表中的列和行
-        row = ((pageQuestionIndex - 1) Mod ROWS_PER_PAGE) + 1
+        ' 计算在工作表中的列和行（V2.4.5：题头占 2 行，从第 3 行开始）
+        rowInPage = ((pageQuestionIndex - 1) Mod ROWS_PER_PAGE) + 1
         colInPage = ((pageQuestionIndex - 1) \ ROWS_PER_PAGE) + 1
         
-        ' 考虑分隔行偏移
-        row = row + (currentPage - 1) * (ROWS_PER_PAGE + 1)
+        ' 考虑题头偏移（2 行）+ 分隔行偏移
+        row = rowInPage + 2 + (currentPage - 1) * (ROWS_PER_PAGE + 1)
         col = colInPage
         
         ' 根据练习模式生成题目
@@ -905,6 +910,10 @@ Sub GenerateQuestions()
         questionNum = questionNum + 1
     Next i
     
+    ' ==================== 隐藏参数面板（G/H 列不打印） ====================
+    wsQuestion.Columns("G:H").Hidden = True
+    wsAnswer.Columns("G:H").Hidden = True
+    
     ' ==================== 打印题头 ====================
     Call PrintHeader(wsQuestion, difficulty, practiceMode, colsPerPage)
     
@@ -946,12 +955,22 @@ Sub PrintHeader(ws As Worksheet, difficulty As String, practiceMode As String, c
     Dim titleRow As Integer
     Dim infoRow As Integer
     Dim lastCol As Integer
+    Dim i As Integer
     
     titleRow = 1
     infoRow = 2
+    lastCol = colsPerPage
+    
+    ' 禁用警告（合并单元格时）
+    Application.DisplayAlerts = False
+    
+    ' 清空题头区域（避免合并警告）
+    For i = 1 To lastCol
+        ws.Cells(titleRow, i).ClearContents
+        ws.Cells(titleRow, i).ClearFormats
+    Next i
     
     ' 标题行（合并单元格）
-    lastCol = colsPerPage
     With ws.Range(ws.Cells(titleRow, 1), ws.Cells(titleRow, lastCol))
         .Merge
         .Value = "幼升小数学专项练习（" & difficulty & " - " & practiceMode & ")"
@@ -962,29 +981,31 @@ Sub PrintHeader(ws As Worksheet, difficulty As String, practiceMode As String, c
         .VerticalAlignment = xlCenter
     End With
     
-    ' 信息行
+    ' 恢复警告
+    Application.DisplayAlerts = True
+    
+    ' 信息行（清空避免冲突）
+    ws.Range("A" & infoRow & ":L" & infoRow).ClearContents
+    
     ' 姓名
     ws.Range("A" & infoRow).Value = "姓名：__________"
     ws.Range("A" & infoRow).Font.Name = "微软雅黑"
     ws.Range("A" & infoRow).Font.Size = 10
     
-    ' 日期
-    ws.Range("D" & infoRow).Value = "日期：____月____日"
-    ws.Range("D" & infoRow).Font.Name = "微软雅黑"
-    ws.Range("D" & infoRow).Font.Size = 10
+    ' 日期（调整到合适位置）
+    ws.Range("E" & infoRow).Value = "日期：____月____日"
+    ws.Range("E" & infoRow).Font.Name = "微软雅黑"
+    ws.Range("E" & infoRow).Font.Size = 10
     
     ' 用时
-    ws.Range("G" & infoRow).Value = "用时：____分钟"
-    ws.Range("G" & infoRow).Font.Name = "微软雅黑"
-    ws.Range("G" & infoRow).Font.Size = 10
+    ws.Range("H" & infoRow).Value = "用时：____分钟"
+    ws.Range("H" & infoRow).Font.Name = "微软雅黑"
+    ws.Range("H" & infoRow).Font.Size = 10
     
     ' 正确率
-    ws.Range("J" & infoRow).Value = "正确率：____%"
-    ws.Range("J" & infoRow).Font.Name = "微软雅黑"
-    ws.Range("J" & infoRow).Font.Size = 10
-    
-    ' 隐藏参数面板（G/H 列不打印）
-    ws.Columns("G:H").Hidden = True
+    ws.Range("K" & infoRow).Value = "正确率：____%"
+    ws.Range("K" & infoRow).Font.Name = "微软雅黑"
+    ws.Range("K" & infoRow).Font.Size = 10
 End Sub
 
 Sub InitParameterPanel_NoReset()
