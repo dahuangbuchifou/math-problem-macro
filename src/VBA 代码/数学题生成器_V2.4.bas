@@ -1,10 +1,10 @@
 ' ============================================================
 ' 幼升小数学题生成器 - VBA 代码
-' 版本：V2.4.7.20260425.2155
+' 版本：V2.4.8.20260425.2225
 ' 文件名：数学题生成器_V2.4.bas
 ' 作者：工部尚书
 ' 创建日期：2026-04-24 19:00
-' 最后更新：2026-04-25 21:55
+' 最后更新：2026-04-25 22:25
 ' 说明：专为幼升小儿童设计的 Excel 数学题生成工具
 ' 支持：100以内加减法、两位数、三位数、连加连减、混合运算
 ' 特性：难度分级、专项练习、A4排版、多页生成、答案隐藏
@@ -732,7 +732,7 @@ Sub GenerateQuestions()
     ' ==================== 设置题目页格式 ====================
     With wsQuestion
         .Cells.Font.Name = "微软雅黑"
-        .Cells.Font.Size = 12   ' V2.3: 12号字体（适应 25 列窄布局）
+        .Cells.Font.Size = 16  ' V2.4.8: 与题目页一致   ' V2.3: 12号字体（适应 25 列窄布局）
         .Cells.HorizontalAlignment = xlCenter
         .Cells.VerticalAlignment = xlCenter
         
@@ -741,9 +741,9 @@ Sub GenerateQuestions()
             .Columns(j).ColumnWidth = 20
         Next j
         
-        ' 设置行高（V2.4.7: 增加行高，让 25 行布满 A4 纸）
-        ' A4 可打印区域约 25cm，25 行 + 题头 2 行 + 分隔行，每行约 22-25
-        targetRowHeight = 23  ' V2.4.7: 从 18 增加到 23
+        ' 设置行高（V2.4.8: 字体 16 号，行高 30，布满 A4 纸）
+        ' A4 可打印区域约 25cm，25 行×30 + 题头 2 行×20 + 分隔行，刚好布满
+        targetRowHeight = 30  ' V2.4.8: 从 23 增加到 30
         
         For j = 1 To totalRows
             ' 判断是否为分隔行
@@ -794,7 +794,7 @@ Sub GenerateQuestions()
     ' ==================== 设置答案页格式 ====================
     With wsAnswer
         .Cells.Font.Name = "微软雅黑"
-        .Cells.Font.Size = 12
+        .Cells.Font.Size = 16  ' V2.4.8: 与题目页一致
         .Cells.HorizontalAlignment = xlCenter
         .Cells.VerticalAlignment = xlCenter
         .Cells.Font.Color = RGB(200, 50, 50)  ' 答案用红色
