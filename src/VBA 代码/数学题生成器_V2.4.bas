@@ -1,14 +1,17 @@
 ' ============================================================
 ' 幼升小数学题生成器 - VBA 代码
-' 版本：V2.4.5.20260425.1755
+' 版本：V2.4.6.20260425.2140
 ' 文件名：数学题生成器_V2.4.bas
 ' 作者：工部尚书
 ' 创建日期：2026-04-24 19:00
-' 最后更新：2026-04-25 17:55
+' 最后更新：2026-04-25 21:40
 ' 说明：专为幼升小儿童设计的 Excel 数学题生成工具
 ' 支持：100以内加减法、两位数、三位数、连加连减、混合运算
 ' 特性：难度分级、专项练习、A4排版、多页生成、答案隐藏
 ' ============================================================
+' V2.4.6 更新日志：
+'   【修复】打印预览空白页问题（设置 PrintArea + 修正分页符偏移）
+'   【优化】页边距设置（上 1cm/下 1cm/左 0.5cm/右 0.5cm）
 ' V2.4.5 更新日志：
 '   【修复】合并单元格警告（合并前清空值 + 禁用警告）
 '   【修复】题头布局错乱（题目从第 3 行开始）
@@ -916,6 +919,35 @@ Sub GenerateQuestions()
     
     ' ==================== 打印题头 ====================
     Call PrintHeader(wsQuestion, difficulty, practiceMode, colsPerPage)
+    
+    ' ==================== 设置打印区域（V2.4.6: 限定只打印题目区域） ====================
+    Dim lastPrintRow As Integer
+    lastPrintRow = totalRows + 2  ' 题头 2 行 + 题目行
+    
+    With wsQuestion.PageSetup
+        .PrintArea = wsQuestion.Range(wsQuestion.Cells(1, 1), wsQuestion.Cells(lastPrintRow, colsPerPage)).Address
+        .TopMargin = Application.CentimetersToPoints(1.0)
+        .BottomMargin = Application.CentimetersToPoints(1.0)
+        .LeftMargin = Application.CentimetersToPoints(0.5)
+        .RightMargin = Application.CentimetersToPoints(0.5)
+        .HeaderMargin = Application.CentimetersToPoints(0.5)
+        .FooterMargin = Application.CentimetersToPoints(0.5)
+        .CenterHorizontally = True
+        .CenterVertically = False  ' 垂直不居中，从顶部开始
+        .FitToPagesWide = 1
+        .FitToPagesTall = False  ' 不限制高度
+    End With
+    
+    ' 答案页同样设置
+    With wsAnswer.PageSetup
+        .PrintArea = wsAnswer.Range(wsAnswer.Cells(1, 1), wsAnswer.Cells(lastPrintRow, colsPerPage)).Address
+        .TopMargin = Application.CentimetersToPoints(1.0)
+        .BottomMargin = Application.CentimetersToPoints(1.0)
+        .LeftMargin = Application.CentimetersToPoints(0.5)
+        .RightMargin = Application.CentimetersToPoints(0.5)
+        .CenterHorizontally = True
+        .FitToPagesWide = 1
+    End With
     
     ' ==================== 更新状态 ====================
     wsQuestion.Range("H4").Value = "已完成（" & questionNum & "题，" & totalPages & "页）"
