@@ -1,14 +1,26 @@
 ' ============================================================
 ' 幼升小数学题生成器 - VBA 代码
-' 版本：V2.4.8.20260425.2225
+' 版本：V2.4.9.20260426.1430
 ' 文件名：数学题生成器_V2.4.bas
 ' 作者：工部尚书
 ' 创建日期：2026-04-24 19:00
-' 最后更新：2026-04-25 22:25
+' 最后更新：2026-04-26 14:30
 ' 说明：专为幼升小儿童设计的 Excel 数学题生成工具
 ' 支持：100以内加减法、两位数、三位数、连加连减、混合运算
 ' 特性：难度分级、专项练习、A4排版、多页生成、答案隐藏
 ' ============================================================
+' V2.4.9 更新日志（2026-04-26）：
+'   【修复】参数刷新 Bug（H1 最大数字范围）：GenerateQuestions 在 ClearContents
+'     前保存 H1 值，恢复时重新写入，并用 savedMaxNum 覆盖 GetDifficultyParams 的默认值
+'   【修复】rowInPage 变量未声明（可能导致编译错误）
+'   【新增】H8 下拉菜单添加"1"选项（1/2/3/4 列可选）
+'   【新增】列数校验改为 1-4（原来是 2-4）
+'   【优化】根据列数动态调整列宽（1列=35, 2列=28, 3列=22, 4列=18）
+'   【优化】1 列时通过 colOffset=2 实现居中（题目从 C 列开始，A/B 留空）
+'   【优化】题头 PrintHeader 支持 colOffset 参数，标题合并范围自动适配
+'   【优化】打印区域 PrintArea 支持 colOffset，1 列时只打印 C 列
+'   【增强】边框颜色加深：RGB(200,210,220) → RGB(128,128,128)，黑白/彩色模式统一
+'   【增强】边框线宽统一为 xlThin（原彩色模式为 xlHairline 太细）
 ' V2.4.7 更新日志：
 '   【优化】行高增加（25 行布满 A4 纸）
 '   【新增】单元格边框（细边框 + 打印友好）
@@ -267,11 +279,11 @@ Sub InitParameterPanel()
         .InCellDropdown = True
     End With
     
-    ' 设置每页列数下拉菜单（H8）— V2.3 新增
+    ' 设置每页列数下拉菜单（H8）— V2.4.9: 新增 "1" 选项（1/2/3/4 列）
     With wsQuestion.Range("H8").Validation
         .Delete
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
-            Operator:=xlBetween, Formula1:="2,3,4"
+            Operator:=xlBetween, Formula1:="1,2,3,4"
         .IgnoreBlank = True
         .InCellDropdown = True
     End With
@@ -655,6 +667,10 @@ Sub GenerateQuestions()
     Dim p As Integer
     Dim colInPage As Integer
     Dim isSep As Boolean
+    Dim rowInPage As Integer          ' V2.4.9: 声明缺失的 rowInPage 变量
+    Dim savedMaxNum As Integer        ' V2.4.9: 保存 H1 最大数字范围
+    Dim colOffset As Integer          ' V2.4.9: 列偏移（1 列居中用）
+    Dim colWidth As Integer           ' V2.4.9: 动态列宽
     
     ' ============================================================
     ' ★ V2.4.3 修复：先初始化工作表对象！
@@ -662,8 +678,10 @@ Sub GenerateQuestions()
     InitializeSheets
     
     ' ============================================================
-    ' ★ V2.3 修复：在 Cells.ClearContents 之前保存所有用户参数
+    ' ★ V2.4.9 修复：在 Cells.ClearContents 之前保存所有用户参数
+    ' 包括 H1 最大数字范围（之前遗漏导致参数被刷新）
     ' ============================================================
+    savedMaxNum = Val(wsQuestion.Range("H1").Value)    ' V2.4.9: 保存 H1
     difficulty = Trim(wsQuestion.Range("H5").Value)
     practiceMode = Trim(wsQuestion.Range("H6").Value)
     questionCount = Val(wsQuestion.Range("H2").Value)
@@ -687,7 +705,8 @@ Sub GenerateQuestions()
     ' 只重建标签（不调用 InitParameterPanel）
     InitParameterPanel_NoReset
     
-    ' ★ V2.3 修复：恢复用户之前选择的所有值
+    ' ★ V2.4.9 修复：恢复用户之前选择的所有值（包括 H1）
+    wsQuestion.Range("H1").Value = savedMaxNum
     wsQuestion.Range("H5").Value = difficulty
     wsQuestion.Range("H6").Value = practiceMode
     wsQuestion.Range("H2").Value = questionCount
@@ -698,8 +717,8 @@ Sub GenerateQuestions()
     ' ============================================================
     ' V2.3: 根据 colsPerPage 计算每页题目数
     ' ============================================================
-    ' 校验 colsPerPage
-    If colsPerPage < 2 Then colsPerPage = 2
+    ' ★ V2.4.9: 校验 colsPerPage（支持 1-4 列）
+    If colsPerPage < 1 Then colsPerPage = 1
     If colsPerPage > 4 Then colsPerPage = 4
     
     questionsPerPage = ROWS_PER_PAGE * colsPerPage  ' 25×2=50, 25×3=75, 25×4=100（竖版）
@@ -717,6 +736,9 @@ Sub GenerateQuestions()
     
     ' 获取难度参数
     GetDifficultyParams maxNum, minNum, noCarry, noBorrow
+    
+    ' ★ V2.4.9: 如果用户自定义了 H1 最大数字范围，则覆盖难度默认值
+    If savedMaxNum > 0 Then maxNum = savedMaxNum
     
     ' 更新状态
     wsQuestion.Range("H4").Value = "生成中..."
@@ -736,10 +758,23 @@ Sub GenerateQuestions()
         .Cells.HorizontalAlignment = xlCenter
         .Cells.VerticalAlignment = xlCenter
         
-        ' 设置列宽（V2.3: 25 列挤在 A4 纸上，列宽 13）
+        ' ★ V2.4.9: 根据列数动态调整列宽
+        Select Case colsPerPage
+            Case 1: colWidth = 35
+            Case 2: colWidth = 28
+            Case 3: colWidth = 22
+            Case Else: colWidth = 18  ' 4 列
+        End Select
         For j = 1 To colsPerPage
-            .Columns(j).ColumnWidth = 20
+            .Columns(j).ColumnWidth = colWidth
         Next j
+        
+        ' ★ V2.4.9: 1 列时居中显示（通过列偏移实现）
+        If colsPerPage = 1 Then
+            colOffset = 2  ' 从 C 列开始，A/B 留空实现居中
+        Else
+            colOffset = 0
+        End If
         
         ' 设置行高（V2.4.8: 字体 16 号，行高 30，布满 A4 纸）
         ' A4 可打印区域约 25cm，25 行×30 + 题头 2 行×20 + 分隔行，刚好布满
@@ -799,24 +834,16 @@ Sub GenerateQuestions()
         .Cells.VerticalAlignment = xlCenter
         .Cells.Font.Color = RGB(200, 50, 50)  ' 答案用红色
         
+        ' ★ V2.4.9: 答案页同步列宽（含 colOffset）
         For j = 1 To colsPerPage
-            .Columns(j).ColumnWidth = 20
+            .Columns(j + colOffset).ColumnWidth = colWidth
         Next j
         
         For j = 1 To totalRows
             .Rows(j).RowHeight = targetRowHeight
         Next j
         
-        ' V2.4.7: 答案页也添加边框
-        For r = 3 To totalRows  ' 从第 3 行开始（题头后）
-            For c = 1 To colsPerPage
-                With .Cells(r, c).Borders
-                    .LineStyle = xlContinuous
-                    .Color = RGB(200, 200, 200)
-                    .Weight = xlThin
-                End With
-            Next c
-        Next r
+        ' ★ V2.4.9: 答案页边框在题目生成循环中设置（与题目页同步）
     End With
     
     ' ==================== 生成题目 ====================
@@ -831,9 +858,9 @@ Sub GenerateQuestions()
         rowInPage = ((pageQuestionIndex - 1) Mod ROWS_PER_PAGE) + 1
         colInPage = ((pageQuestionIndex - 1) \ ROWS_PER_PAGE) + 1
         
-        ' 考虑题头偏移（2 行）+ 分隔行偏移
+        ' 考虑题头偏移（2 行）+ 分隔行偏移 + 列偏移（1 列居中）
         row = rowInPage + 2 + (currentPage - 1) * (ROWS_PER_PAGE + 1)
-        col = colInPage
+        col = colInPage + colOffset    ' ★ V2.4.9: 加列偏移实现 1 列居中
         
         ' 根据练习模式生成题目
         questionText = ""
@@ -895,29 +922,29 @@ Sub GenerateQuestions()
         ' 提取答案
         answerText = ExtractAnswer(questionText)
         
-        ' ★ V2.3: 根据打印模式设置颜色
+        ' ★ V2.4.9: 根据打印模式设置颜色（边框加深）
         If printMode = "黑白" Then
-            ' 黑白模式：无背景色，只加细边框
+            ' 黑白模式：无背景色，加深边框
             wsQuestion.Cells(row, col).Interior.ColorIndex = xlNone
             wsQuestion.Cells(row, col).Borders.LineStyle = xlContinuous
-            wsQuestion.Cells(row, col).Borders.Color = RGB(180, 180, 180)
+            wsQuestion.Cells(row, col).Borders.Color = RGB(128, 128, 128)  ' V2.4.9: 加深
             wsQuestion.Cells(row, col).Borders.Weight = xlThin
             
             wsAnswer.Cells(row, col).Interior.ColorIndex = xlNone
             wsAnswer.Cells(row, col).Borders.LineStyle = xlContinuous
-            wsAnswer.Cells(row, col).Borders.Color = RGB(180, 180, 180)
+            wsAnswer.Cells(row, col).Borders.Color = RGB(128, 128, 128)  ' V2.4.9: 加深
             wsAnswer.Cells(row, col).Borders.Weight = xlThin
         Else
-            ' 彩色模式：极淡背景 + 细边框
+            ' 彩色模式：极淡背景 + 加深边框
             wsQuestion.Cells(row, col).Interior.Color = GetPageColor(currentPage, pageQuestionIndex)
             wsQuestion.Cells(row, col).Borders.LineStyle = xlContinuous
-            wsQuestion.Cells(row, col).Borders.Color = RGB(200, 210, 220)
-            wsQuestion.Cells(row, col).Borders.Weight = xlHairline
+            wsQuestion.Cells(row, col).Borders.Color = RGB(128, 128, 128)  ' V2.4.9: 加深（原 200,210,220）
+            wsQuestion.Cells(row, col).Borders.Weight = xlThin
             
             wsAnswer.Cells(row, col).Interior.Color = GetPageColor(currentPage, pageQuestionIndex)
             wsAnswer.Cells(row, col).Borders.LineStyle = xlContinuous
-            wsAnswer.Cells(row, col).Borders.Color = RGB(200, 210, 220)
-            wsAnswer.Cells(row, col).Borders.Weight = xlHairline
+            wsAnswer.Cells(row, col).Borders.Color = RGB(128, 128, 128)  ' V2.4.9: 加深
+            wsAnswer.Cells(row, col).Borders.Weight = xlThin
         End If
         
         ' 写入题目（添加答案下划线）
@@ -934,14 +961,18 @@ Sub GenerateQuestions()
     wsAnswer.Columns("G:H").Hidden = True
     
     ' ==================== 打印题头 ====================
-    Call PrintHeader(wsQuestion, difficulty, practiceMode, colsPerPage)
+    Call PrintHeader(wsQuestion, difficulty, practiceMode, colsPerPage, colOffset)
     
-    ' ==================== 设置打印区域（V2.4.6: 限定只打印题目区域） ====================
+    ' ==================== 设置打印区域（V2.4.9: 含 colOffset） ====================
     Dim lastPrintRow As Integer
     lastPrintRow = totalRows + 2  ' 题头 2 行 + 题目行
+    Dim firstPrintCol As Integer
+    firstPrintCol = 1 + colOffset
+    Dim lastPrintCol As Integer
+    lastPrintCol = colsPerPage + colOffset
     
     With wsQuestion.PageSetup
-        .PrintArea = wsQuestion.Range(wsQuestion.Cells(1, 1), wsQuestion.Cells(lastPrintRow, colsPerPage)).Address
+        .PrintArea = wsQuestion.Range(wsQuestion.Cells(1, firstPrintCol), wsQuestion.Cells(lastPrintRow, lastPrintCol)).Address
         .TopMargin = Application.CentimetersToPoints(1.0)
         .BottomMargin = Application.CentimetersToPoints(1.0)
         .LeftMargin = Application.CentimetersToPoints(0.5)
@@ -954,9 +985,9 @@ Sub GenerateQuestions()
         .FitToPagesTall = False  ' 不限制高度
     End With
     
-    ' 答案页同样设置
+    ' 答案页同样设置（V2.4.9: 含 colOffset）
     With wsAnswer.PageSetup
-        .PrintArea = wsAnswer.Range(wsAnswer.Cells(1, 1), wsAnswer.Cells(lastPrintRow, colsPerPage)).Address
+        .PrintArea = wsAnswer.Range(wsAnswer.Cells(1, firstPrintCol), wsAnswer.Cells(lastPrintRow, lastPrintCol)).Address
         .TopMargin = Application.CentimetersToPoints(1.0)
         .BottomMargin = Application.CentimetersToPoints(1.0)
         .LeftMargin = Application.CentimetersToPoints(0.5)
@@ -999,27 +1030,29 @@ End Sub
 ' 参数面板布局：G8=每页列数, G9=打印模式
 
 ' ==================== 打印题头 ====================
-Sub PrintHeader(ws As Worksheet, difficulty As String, practiceMode As String, colsPerPage As Integer)
+Sub PrintHeader(ws As Worksheet, difficulty As String, practiceMode As String, colsPerPage As Integer, Optional colOffset As Integer = 0)
     Dim titleRow As Integer
     Dim infoRow As Integer
+    Dim firstCol As Integer
     Dim lastCol As Integer
     Dim i As Integer
     
     titleRow = 1
     infoRow = 2
-    lastCol = colsPerPage
+    firstCol = 1 + colOffset    ' ★ V2.4.9: 考虑列偏移
+    lastCol = colsPerPage + colOffset
     
     ' 禁用警告（合并单元格时）
     Application.DisplayAlerts = False
     
     ' 清空题头区域（避免合并警告）
-    For i = 1 To lastCol
+    For i = firstCol To lastCol
         ws.Cells(titleRow, i).ClearContents
         ws.Cells(titleRow, i).ClearFormats
     Next i
     
     ' 标题行（合并单元格）
-    With ws.Range(ws.Cells(titleRow, 1), ws.Cells(titleRow, lastCol))
+    With ws.Range(ws.Cells(titleRow, firstCol), ws.Cells(titleRow, lastCol))
         .Merge
         .Value = "幼升小数学专项练习（" & difficulty & " - " & practiceMode & ")"
         .Font.Name = "微软雅黑"
@@ -1032,7 +1065,7 @@ Sub PrintHeader(ws As Worksheet, difficulty As String, practiceMode As String, c
     ' 恢复警告
     Application.DisplayAlerts = True
     
-    ' 信息行（清空避免冲突）
+    ' 信息行（清空避免冲突）— 使用固定列位置保持布局一致
     ws.Range("A" & infoRow & ":L" & infoRow).ClearContents
     
     ' 姓名
@@ -1040,7 +1073,7 @@ Sub PrintHeader(ws As Worksheet, difficulty As String, practiceMode As String, c
     ws.Range("A" & infoRow).Font.Name = "微软雅黑"
     ws.Range("A" & infoRow).Font.Size = 10
     
-    ' 日期（调整到合适位置）
+    ' 日期
     ws.Range("E" & infoRow).Value = "日期：____月____日"
     ws.Range("E" & infoRow).Font.Name = "微软雅黑"
     ws.Range("E" & infoRow).Font.Size = 10
@@ -1116,11 +1149,11 @@ Sub InitParameterPanel_NoReset()
         .InCellDropdown = True
     End With
     
-    ' 设置每页列数下拉菜单（H8）— V2.3 新增
+    ' 设置每页列数下拉菜单（H8）— V2.4.9: 新增 "1" 选项
     With wsQuestion.Range("H8").Validation
         .Delete
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
-            Operator:=xlBetween, Formula1:="2,3,4"
+            Operator:=xlBetween, Formula1:="1,2,3,4"
         .IgnoreBlank = True
         .InCellDropdown = True
     End With
