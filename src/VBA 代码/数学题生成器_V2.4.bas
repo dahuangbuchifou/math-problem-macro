@@ -1,14 +1,17 @@
 ' ============================================================
 ' 幼升小数学题生成器 - VBA 代码
-' 版本：V2.4.12.20260427.1400
+' 版本：V2.4.13.20260427.1545
 ' 文件名：数学题生成器_V2.4.bas
 ' 作者：工部尚书
 ' 创建日期：2026-04-24 19:00
-' 最后更新：2026-04-26 14:30
+' 最后更新：2026-04-27 15:45
 ' 说明：专为幼升小儿童设计的 Excel 数学题生成工具
 ' 支持：100以内加减法、两位数、三位数、连加连减、混合运算
 ' 特性：难度分级、专项练习、A4排版、多页生成、答案隐藏
 ' ============================================================
+' V2.4.13 更新日志（2026-04-27 15:45）：
+'   【新增】数字、运算符、结果分列显示 - 用 Tab 分隔，格式更整齐
+'   【更新】代码头部版本信息同步到最新
 ' V2.4.12 更新日志（2026-04-27）：
 '   【修复】两位数加法/减法不受 H1 控制 Bug：函数硬编码 10-99 范围
 '     - GenerateTwoDigitAdd 添加 maxNum/minNum 参数
@@ -635,6 +638,46 @@ Function GenerateThreeDigitMixed() As String
 End Function
 
 ' ==================== 提取题目答案 ====================
+' ★ V2.4.13 格式化题目为分列显示（用 Tab 分隔数字、运算符、结果）
+Function FormatQuestionWithTabs(questionText As String) As String
+    Dim parts() As String
+    Dim expr As String
+    Dim tokens() As String
+    Dim i As Integer
+    Dim result As String
+    
+    ' 分割题目和答案标记
+    parts = Split(questionText, " = ")
+    If UBound(parts) < 0 Then
+        FormatQuestionWithTabs = questionText & " ___"
+        Exit Function
+    End If
+    
+    expr = parts(0)
+    
+    ' 解析表达式，用 Tab 分隔
+    tokens = Split(expr, " ")
+    If UBound(tokens) < 0 Then
+        FormatQuestionWithTabs = questionText & " ___"
+        Exit Function
+    End If
+    
+    ' 构建分列格式：数字 [TAB] 运算符 [TAB] 数字 [TAB]=[TAB]___
+    result = ""
+    i = 0
+    Do While i <= UBound(tokens)
+        If i > 0 Then result = result & vbTab  ' 添加 Tab 分隔符
+        result = result & tokens(i)
+        i = i + 1
+    Loop
+    
+    ' 添加等号和下划线
+    result = result & vbTab & "=" & vbTab & "___"
+    
+    FormatQuestionWithTabs = result
+End Function
+
+' ==================== 提取题目答案 ====================
 Function ExtractAnswer(questionText As String) As Integer
     Dim parts() As String
     Dim expr As String
@@ -1037,8 +1080,11 @@ Sub GenerateQuestions()
             wsAnswer.Cells(row, col).Borders.Weight = xlThin
         End If
         
-        ' 写入题目（添加答案下划线）
-        wsQuestion.Cells(row, col).Value = questionText & " ___"
+        ' ★ V2.4.13 写入题目（数字、运算符、结果用 Tab 分隔，格式更整齐）
+        ' 将 "37 + 3 = " 格式改为 "37[TAB]+[TAB]3[TAB]=[TAB]___"
+        Dim formattedQuestion As String
+        formattedQuestion = FormatQuestionWithTabs(questionText)
+        wsQuestion.Cells(row, col).Value = formattedQuestion
         
         ' 写入答案
         wsAnswer.Cells(row, col).Value = answerText
