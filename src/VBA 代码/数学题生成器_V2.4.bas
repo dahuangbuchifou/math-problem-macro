@@ -1,6 +1,6 @@
 ' ============================================================
 ' 幼升小数学题生成器 - VBA 代码
-' 版本：V2.4.13.20260427.1545
+' 版本：V2.4.15.20260427.1815
 ' 文件名：数学题生成器_V2.4.bas
 ' 作者：工部尚书
 ' 创建日期：2026-04-24 19:00
@@ -1092,9 +1092,9 @@ Sub GenerateQuestions()
         questionNum = questionNum + 1
     Next i
     
-    ' ==================== 隐藏参数面板（G/H 列不打印） ====================
-    wsQuestion.Columns("G:H").Hidden = True
-    wsAnswer.Columns("G:H").Hidden = True
+    ' ★ V2.4.15: 保留参数面板（G/H 列不隐藏，便于用户确认出题效果）
+    ' wsQuestion.Columns("G:H").Hidden = True  ' 已移除
+    ' wsAnswer.Columns("G:H").Hidden = True    ' 已移除
     
     ' ==================== 打印题头 ====================
     Call PrintHeader(wsQuestion, difficulty, practiceMode, colsPerPage, colOffset)
@@ -1192,6 +1192,10 @@ Sub PrintHeader(ws As Worksheet, difficulty As String, practiceMode As String, c
     
     titleRow = 1
     infoRow = 2
+    
+    ' ★ V2.4.15: 设置题头行高（20 磅）
+    ws.Rows(titleRow).RowHeight = 20
+    ws.Rows(infoRow).RowHeight = 20
     
     ' ★ V2.4.10: 根据列数计算题头列范围
     Select Case colsPerPage
