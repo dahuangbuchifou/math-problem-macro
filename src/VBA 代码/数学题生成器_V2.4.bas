@@ -1,6 +1,6 @@
 ' ============================================================
 ' 幼升小数学题生成器 - VBA 代码
-' 版本：V2.4.15.20260427.1815
+' 版本：V2.4.16.20260427.2130
 ' 文件名：数学题生成器_V2.4.bas
 ' 作者：工部尚书
 ' 创建日期：2026-04-24 19:00
@@ -9,6 +9,19 @@
 ' 支持：100以内加减法、两位数、三位数、连加连减、混合运算
 ' 特性：难度分级、专项练习、A4排版、多页生成、答案隐藏
 ' ============================================================
+' V2.4.16 更新日志（2026-04-27 21:30）：
+'   【新增】数字、运算符、结果分列显示（方案 B）
+'     - 数字列：左对齐，列宽 12
+'     - 运算符列：居中，列宽 3
+'     - 等号列：居中，列宽 3
+'     - 结果列：下划线，列宽 8
+'   【修复】参数面板保留（G/H 列不隐藏）
+'   【修复】题头行高设置（20 磅）
+' V2.4.15 更新日志（2026-04-27）：
+'   【修复】参数面板保留（G/H 列不隐藏）
+'   【修复】题头行高设置（20 磅）
+' V2.4.14 更新日志（2026-04-27）：
+'   【文档】更新需求文档（27 行 = 25 行题目 + 2 行题头）
 ' V2.4.13 更新日志（2026-04-27 15:45）：
 '   【新增】数字、运算符、结果分列显示 - 用 Tab 分隔，格式更整齐
 '   【更新】代码头部版本信息同步到最新
@@ -639,44 +652,6 @@ End Function
 
 ' ==================== 提取题目答案 ====================
 ' ★ V2.4.13 格式化题目为分列显示（用 Tab 分隔数字、运算符、结果）
-Function FormatQuestionWithTabs(questionText As String) As String
-    Dim parts() As String
-    Dim expr As String
-    Dim tokens() As String
-    Dim i As Integer
-    Dim result As String
-    
-    ' 分割题目和答案标记
-    parts = Split(questionText, " = ")
-    If UBound(parts) < 0 Then
-        FormatQuestionWithTabs = questionText & " ___"
-        Exit Function
-    End If
-    
-    expr = parts(0)
-    
-    ' 解析表达式，用 Tab 分隔
-    tokens = Split(expr, " ")
-    If UBound(tokens) < 0 Then
-        FormatQuestionWithTabs = questionText & " ___"
-        Exit Function
-    End If
-    
-    ' 构建分列格式：数字 [TAB] 运算符 [TAB] 数字 [TAB]=[TAB]___
-    result = ""
-    i = 0
-    Do While i <= UBound(tokens)
-        If i > 0 Then result = result & vbTab  ' 添加 Tab 分隔符
-        result = result & tokens(i)
-        i = i + 1
-    Loop
-    
-    ' 添加等号和下划线
-    result = result & vbTab & "=" & vbTab & "___"
-    
-    FormatQuestionWithTabs = result
-End Function
-
 ' ==================== 提取题目答案 ====================
 Function ExtractAnswer(questionText As String) As Integer
     Dim parts() As String
@@ -846,26 +821,25 @@ Sub GenerateQuestions()
         .Cells.HorizontalAlignment = xlLeft   ' V2.4.10: 左对齐（原 xlCenter）
         .Cells.VerticalAlignment = xlCenter
         
-        ' ★ V2.4.9: 根据列数动态调整列宽
-        Select Case colsPerPage
-            Case 1: colWidth = 35
-            Case 2: colWidth = 28
-            Case 3: colWidth = 22
-            Case Else: colWidth = 18  ' 4 列
-        End Select
+        ' ★ V2.4.16: 分列显示布局（方案 B）
+        ' 每个题目占用 5 列：数字 1(10) | 运算符 (3) | 数字 2(10) | 等号 (2) | 结果 (8)
+        ' 总宽度：33 列宽单位
+        Dim subCols As Integer
+        subCols = 5  ' 每个题目 5 个子列
+        Dim totalExcelCols As Integer
+        totalExcelCols = colsPerPage * subCols  ' 总 Excel 列数
         
-        ' ★ V2.4.10: 根据列数设置列宽（含空列）
-        Dim maxCol As Integer
-        maxCol = colsPerPage
-        Select Case colsPerPage
-            Case 1: maxCol = 4   ' A-B 空，C 题目，D-E 空
-            Case 2: maxCol = 6   ' A-B 题目 1，C-D 空，E-F 题目 2
-            Case 3: maxCol = 5   ' A 题目 1，B 空，C 题目 2，D 空，E 题目 3
-            Case 4: maxCol = 4   ' A-B-C-D 紧凑
-        End Select
-        
-        For j = 1 To maxCol
-            .Columns(j).ColumnWidth = colWidth
+        ' 设置列宽
+        For j = 1 To totalExcelCols
+            Dim subCol As Integer
+            subCol = ((j - 1) Mod 5) + 1  ' 1-5 循环
+            Select Case subCol
+                Case 1: .Columns(j).ColumnWidth = 10   ' 数字 1
+                Case 2: .Columns(j).ColumnWidth = 3    ' 运算符（居中）
+                Case 3: .Columns(j).ColumnWidth = 10   ' 数字 2
+                Case 4: .Columns(j).ColumnWidth = 2    ' 等号（居中）
+                Case 5: .Columns(j).ColumnWidth = 8    ' 结果下划线
+            End Select
         Next j
         
         ' ★ V2.4.9: 1 列时居中显示（通过列偏移实现）
@@ -1080,14 +1054,77 @@ Sub GenerateQuestions()
             wsAnswer.Cells(row, col).Borders.Weight = xlThin
         End If
         
-        ' ★ V2.4.13 写入题目（数字、运算符、结果用 Tab 分隔，格式更整齐）
-        ' 将 "37 + 3 = " 格式改为 "37[TAB]+[TAB]3[TAB]=[TAB]___"
-        Dim formattedQuestion As String
-        formattedQuestion = FormatQuestionWithTabs(questionText)
-        wsQuestion.Cells(row, col).Value = formattedQuestion
+        ' ★ V2.4.16 写入题目（方案 B：分列显示）
+        ' 计算当前题目在 Excel 列中的起始位置
+        Dim startCol As Integer
+        startCol = (colInPage - 1) * subCols + 1
         
-        ' 写入答案
-        wsAnswer.Cells(row, col).Value = answerText
+        ' 解析题目 "37 + 3 = "
+        Dim num1 As String, op As String, num2 As String
+        Dim parts1() As String, parts2() As String
+        parts1 = Split(questionText, " = ")
+        If UBound(parts1) >= 0 Then
+            parts2 = Split(parts1(0), " ")
+            If UBound(parts2) >= 2 Then
+                num1 = parts2(0)
+                op = parts2(1)
+                num2 = parts2(2)
+            Else
+                num1 = questionText
+                op = ""
+                num2 = ""
+            End If
+        Else
+            num1 = questionText
+            op = ""
+            num2 = ""
+        End If
+        
+        ' 写入题目页（5 列分列显示）
+        With wsQuestion
+            ' 数字 1（左对齐）
+            .Cells(row, startCol).Value = num1
+            .Cells(row, startCol).HorizontalAlignment = xlLeft
+            ' 运算符（居中）
+            .Cells(row, startCol + 1).Value = op
+            .Cells(row, startCol + 1).HorizontalAlignment = xlCenter
+            ' 数字 2（左对齐）
+            .Cells(row, startCol + 2).Value = num2
+            .Cells(row, startCol + 2).HorizontalAlignment = xlLeft
+            ' 等号（居中）
+            .Cells(row, startCol + 3).Value = "="
+            .Cells(row, startCol + 3).HorizontalAlignment = xlCenter
+            ' 结果下划线（左对齐）
+            .Cells(row, startCol + 4).Value = "___"
+            .Cells(row, startCol + 4).HorizontalAlignment = xlLeft
+            
+            ' 设置边框（5 列整体边框）
+            With .Range(.Cells(row, startCol), .Cells(row, startCol + 4))
+                .Borders.LineStyle = xlContinuous
+                .Borders.Color = RGB(128, 128, 128)
+                .Borders.Weight = xlThin
+                If printMode = "彩色" Then
+                    .Interior.Color = GetPageColor(currentPage, pageQuestionIndex)
+                End If
+            End With
+        End With
+        
+        ' 写入答案页（同样 5 列分列显示）
+        With wsAnswer
+            ' 只在结果列写入答案
+            .Cells(row, startCol + 4).Value = answerText
+            .Cells(row, startCol + 4).HorizontalAlignment = xlLeft
+            
+            ' 设置边框（5 列整体边框）
+            With .Range(.Cells(row, startCol), .Cells(row, startCol + 4))
+                .Borders.LineStyle = xlContinuous
+                .Borders.Color = RGB(128, 128, 128)
+                .Borders.Weight = xlThin
+                If printMode = "彩色" Then
+                    .Interior.Color = GetPageColor(currentPage, pageQuestionIndex)
+                End If
+            End With
+        End With
         
         questionNum = questionNum + 1
     Next i
@@ -1097,32 +1134,18 @@ Sub GenerateQuestions()
     ' wsAnswer.Columns("G:H").Hidden = True    ' 已移除
     
     ' ==================== 打印题头 ====================
-    Call PrintHeader(wsQuestion, difficulty, practiceMode, colsPerPage, colOffset)
+    ' ★ V2.4.16: 题头需要适配分列显示
+    Call PrintHeaderV2(wsQuestion, difficulty, practiceMode, colsPerPage, subCols)
     
-    ' ==================== 设置打印区域（V2.4.10: 含空列间隔） ====================
+    ' ==================== 设置打印区域（V2.4.16: 分列显示） ====================
     Dim lastPrintRow As Integer
     lastPrintRow = totalRows + 2  ' 题头 2 行 + 题目行
     Dim firstPrintCol As Integer
     Dim lastPrintCol As Integer
     
-    ' ★ V2.4.10: 根据列数计算打印区域
-    Select Case colsPerPage
-        Case 1
-            firstPrintCol = 3  ' C 列
-            lastPrintCol = 3
-        Case 2
-            firstPrintCol = 1  ' A 列
-            lastPrintCol = 6   ' F 列（含空列）
-        Case 3
-            firstPrintCol = 1  ' A 列
-            lastPrintCol = 5   ' E 列（含空列）
-        Case 4
-            firstPrintCol = 1  ' A 列
-            lastPrintCol = 4   ' D 列
-        Case Else
-            firstPrintCol = 1 + colOffset
-            lastPrintCol = colsPerPage + colOffset
-    End Select
+    ' ★ V2.4.16: 打印区域为所有题目列
+    firstPrintCol = 1
+    lastPrintCol = colsPerPage * subCols  ' 5 列/题目 × 题目列数
     
     With wsQuestion.PageSetup
         .PrintArea = wsQuestion.Range(wsQuestion.Cells(1, firstPrintCol), wsQuestion.Cells(lastPrintRow, lastPrintCol)).Address
@@ -1261,6 +1284,72 @@ Sub PrintHeader(ws As Worksheet, difficulty As String, practiceMode As String, c
     ws.Range("K" & infoRow).Value = "正确率：____%"
     ws.Range("K" & infoRow).Font.Name = "微软雅黑"
     ws.Range("K" & infoRow).Font.Size = 10
+End Sub
+
+' ==================== 打印题头（V2.4.16 分列显示版） ====================
+Sub PrintHeaderV2(ws As Worksheet, difficulty As String, practiceMode As String, colsPerPage As Integer, subCols As Integer)
+    Dim titleRow As Integer
+    Dim infoRow As Integer
+    Dim firstCol As Integer
+    Dim lastCol As Integer
+    Dim i As Integer
+    
+    titleRow = 1
+    infoRow = 2
+    firstCol = 1
+    lastCol = colsPerPage * subCols  ' 5 列/题目 × 题目列数
+    
+    ' ★ V2.4.16: 设置题头行高（20 磅）
+    ws.Rows(titleRow).RowHeight = 20
+    ws.Rows(infoRow).RowHeight = 20
+    
+    ' 禁用警告（合并单元格时）
+    Application.DisplayAlerts = False
+    
+    ' 清空题头区域（避免合并警告）
+    For i = firstCol To lastCol
+        ws.Cells(titleRow, i).ClearContents
+        ws.Cells(titleRow, i).ClearFormats
+    Next i
+    
+    ' 标题行（合并单元格）
+    With ws.Range(ws.Cells(titleRow, firstCol), ws.Cells(titleRow, lastCol))
+        .Merge
+        .Value = "幼升小数学专项练习（" & difficulty & " - " & practiceMode & ")"
+        .Font.Name = "微软雅黑"
+        .Font.Size = 16
+        .Font.Bold = True
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+    End With
+    
+    ' 恢复警告
+    Application.DisplayAlerts = True
+    
+    ' 信息行（清空避免冲突）
+    ws.Range(ws.Cells(infoRow, firstCol), ws.Cells(infoRow, lastCol)).ClearContents
+    
+    ' 姓名
+    ws.Cells(infoRow, firstCol).Value = "姓名：__________"
+    ws.Cells(infoRow, firstCol).Font.Name = "微软雅黑"
+    ws.Cells(infoRow, firstCol).Font.Size = 10
+    
+    ' 日期（中间位置）
+    Dim midCol As Integer
+    midCol = firstCol + (lastCol - firstCol) \ 2
+    ws.Cells(infoRow, midCol).Value = "日期：____月____日"
+    ws.Cells(infoRow, midCol).Font.Name = "微软雅黑"
+    ws.Cells(infoRow, midCol).Font.Size = 10
+    
+    ' 用时
+    ws.Cells(infoRow, lastCol - 4).Value = "用时：____分钟"
+    ws.Cells(infoRow, lastCol - 4).Font.Name = "微软雅黑"
+    ws.Cells(infoRow, lastCol - 4).Font.Size = 10
+    
+    ' 正确率
+    ws.Cells(infoRow, lastCol).Value = "正确率：____%"
+    ws.Cells(infoRow, lastCol).Font.Name = "微软雅黑"
+    ws.Cells(infoRow, lastCol).Font.Size = 10
 End Sub
 
 Sub InitParameterPanel_NoReset()
