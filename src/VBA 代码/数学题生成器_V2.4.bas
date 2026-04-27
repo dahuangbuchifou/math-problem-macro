@@ -364,8 +364,11 @@ Function GenerateAddition(maxNum As Integer, minNum As Integer, noCarry As Boole
     attempts = 0
     
     Do
-        a = Int(Rnd() * (maxNum - minNum + 1)) + minNum
-        b = Int(Rnd() * (maxNum - a + 1)) + 1
+        ' ★ V2.4.11 修复：确保 a+b <= maxNum
+        ' a 的范围：[minNum, maxNum-1]（至少留 1 给 b）
+        a = Int(Rnd() * (maxNum - minNum)) + minNum
+        ' b 的范围：[1, maxNum-a]，确保 a+b <= maxNum
+        b = Int(Rnd() * (maxNum - a)) + 1
         result = a + b
         attempts = attempts + 1
         
@@ -397,8 +400,14 @@ Function GenerateSubtraction(maxNum As Integer, minNum As Integer, noBorrow As B
     attempts = 0
     
     Do
+        ' ★ V2.4.11 修复：确保 a <= maxNum
         a = Int(Rnd() * (maxNum - minNum + 1)) + minNum
-        b = Int(Rnd() * (a - minNum)) + minNum
+        ' b 的范围：[minNum, a-1]，确保 a-b >= minNum 且 a-b <= maxNum
+        If a <= minNum Then
+            b = minNum
+        Else
+            b = Int(Rnd() * (a - minNum)) + minNum
+        End If
         attempts = attempts + 1
         
         ' 防止死循环
@@ -805,9 +814,11 @@ Sub GenerateQuestions()
             colOffset = 0
         End If
         
-        ' 设置行高（V2.4.8: 字体 16 号，行高 30，布满 A4 纸）
-        ' A4 可打印区域约 25cm，25 行×30 + 题头 2 行×20 + 分隔行，刚好布满
-        targetRowHeight = 30  ' V2.4.8: 从 23 增加到 30
+        ' 设置行高（V2.4.10: 重新计算，确保 25 行 + 题头布满 A4 纸）
+        ' A4 可打印区域约 25cm = 709 磅
+        ' 题头 2 行×20 磅 = 40 磅，分隔行 10 磅
+        ' 剩余：709 - 40 - 10 = 659 磅，25 行 → 659/25 = 26.36
+        targetRowHeight = 26  ' V2.4.10: 从 30 调整为 26，确保布满页面
         
         For j = 1 To totalRows
             ' 判断是否为分隔行
