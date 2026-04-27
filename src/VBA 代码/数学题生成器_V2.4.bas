@@ -1,6 +1,6 @@
 ' ============================================================
 ' 幼升小数学题生成器 - VBA 代码
-' 版本：V2.4.10.20260426.2150
+' 版本：V2.4.12.20260427.1400
 ' 文件名：数学题生成器_V2.4.bas
 ' 作者：工部尚书
 ' 创建日期：2026-04-24 19:00
@@ -9,6 +9,15 @@
 ' 支持：100以内加减法、两位数、三位数、连加连减、混合运算
 ' 特性：难度分级、专项练习、A4排版、多页生成、答案隐藏
 ' ============================================================
+' V2.4.12 更新日志（2026-04-27）：
+'   【修复】两位数加法/减法不受 H1 控制 Bug：函数硬编码 10-99 范围
+'     - GenerateTwoDigitAdd 添加 maxNum/minNum 参数
+'     - GenerateTwoDigitSub 添加 maxNum/minNum 参数
+'     - 调用处传入实际 maxNum/minNum 值
+' V2.4.11 更新日志（2026-04-27）：
+'   【修复】行高计算：30 磅→26 磅，25 行 + 题头布满 A4 纸
+'   【修复】加法数字范围：确保 a+b≤maxNum
+'   【修复】减法边界检查：防止 a≤minNum 时出错
 ' V2.4.10 更新日志（2026-04-26）：
 '   【修复】参数刷新 Bug（H3 负数概率遗漏）：GenerateQuestions 在 ClearContents
 '     前保存 H3 值，恢复时重新写入，彻底解决 H1-H9 参数丢失问题
@@ -539,14 +548,17 @@ Function GenerateMixed(maxNum As Integer, minNum As Integer, noCarry As Boolean,
 End Function
 
 ' ==================== 生成两位数加法题目 ====================
-Function GenerateTwoDigitAdd() As String
+' ★ V2.4.12 修复：添加 maxNum 参数，受 H1 控制
+Function GenerateTwoDigitAdd(maxNum As Integer, minNum As Integer) As String
     Dim a As Integer, b As Integer, result As Integer
     Dim attempts As Integer
     attempts = 0
     
     Do
-        a = Int(Rnd() * 90) + 10   ' 10-99
-        b = Int(Rnd() * (99 - a + 1)) + 1  ' 确保 a+b <= 99
+        ' ★ V2.4.12: a 的范围受 maxNum 控制
+        a = Int(Rnd() * (maxNum - minNum + 1)) + minNum
+        ' b 确保 a+b <= maxNum
+        b = Int(Rnd() * (maxNum - a + 1)) + 1
         result = a + b
         attempts = attempts + 1
         
@@ -554,27 +566,34 @@ Function GenerateTwoDigitAdd() As String
             GenerateTwoDigitAdd = ""
             Exit Function
         End If
-    Loop While result > 99
+    Loop While result > maxNum
     
     GenerateTwoDigitAdd = a & " + " & b & " = "
 End Function
 
 ' ==================== 生成两位数减法题目 ====================
-Function GenerateTwoDigitSub() As String
+' ★ V2.4.12 修复：添加 maxNum 参数，受 H1 控制
+Function GenerateTwoDigitSub(maxNum As Integer, minNum As Integer) As String
     Dim a As Integer, b As Integer
     Dim attempts As Integer
     attempts = 0
     
     Do
-        a = Int(Rnd() * 90) + 10   ' 10-99
-        b = Int(Rnd() * (a - 10)) + 10  ' 10 到 a-1
+        ' ★ V2.4.12: a 的范围受 maxNum 控制
+        a = Int(Rnd() * (maxNum - minNum + 1)) + minNum
+        ' b 确保 a-b >= minNum 且 b >= minNum
+        If a <= minNum Then
+            b = minNum
+        Else
+            b = Int(Rnd() * (a - minNum)) + minNum
+        End If
         attempts = attempts + 1
         
         If attempts > 1000 Then
             GenerateTwoDigitSub = ""
             Exit Function
         End If
-    Loop While b >= a Or b < 10
+    Loop While b >= a Or b < minNum
     
     GenerateTwoDigitSub = a & " - " & b & " = "
 End Function
@@ -961,10 +980,12 @@ Sub GenerateQuestions()
                 questionText = a & " - " & b & " = "
                 
             Case "两位数加法"
-                questionText = GenerateTwoDigitAdd()
+                ' ★ V2.4.12 修复：传入 maxNum 和 minNum
+                questionText = GenerateTwoDigitAdd(maxNum, minNum)
                 
             Case "两位数减法"
-                questionText = GenerateTwoDigitSub()
+                ' ★ V2.4.12 修复：传入 maxNum 和 minNum
+                questionText = GenerateTwoDigitSub(maxNum, minNum)
                 
             Case "三位数混合"
                 questionText = GenerateThreeDigitMixed()
