@@ -1,6 +1,6 @@
 ' ============================================================
 ' 幼升小数学题生成器 - VBA 代码
-' 版本：V2.4.16.20260427.2130
+' 版本：V2.4.17.20260427.2150
 ' 文件名：数学题生成器_V2.4.bas
 ' 作者：工部尚书
 ' 创建日期：2026-04-24 19:00
@@ -9,11 +9,14 @@
 ' 支持：100以内加减法、两位数、三位数、连加连减、混合运算
 ' 特性：难度分级、专项练习、A4排版、多页生成、答案隐藏
 ' ============================================================
+' V2.4.17 更新日志（2026-04-27 21:50）：
+'   【新增】题目列之间增加 2 列空白间隔，格式更清晰
+'   【优化】打印区域适配间隔列
 ' V2.4.16 更新日志（2026-04-27 21:30）：
 '   【新增】数字、运算符、结果分列显示（方案 B）
-'     - 数字列：左对齐，列宽 12
+'     - 数字列：左对齐，列宽 10
 '     - 运算符列：居中，列宽 3
-'     - 等号列：居中，列宽 3
+'     - 等号列：居中，列宽 2
 '     - 结果列：下划线，列宽 8
 '   【修复】参数面板保留（G/H 列不隐藏）
 '   【修复】题头行高设置（20 磅）
@@ -821,26 +824,37 @@ Sub GenerateQuestions()
         .Cells.HorizontalAlignment = xlLeft   ' V2.4.10: 左对齐（原 xlCenter）
         .Cells.VerticalAlignment = xlCenter
         
-        ' ★ V2.4.16: 分列显示布局（方案 B）
+        ' ★ V2.4.17: 分列显示布局（方案 B + 题目间隔）
         ' 每个题目占用 5 列：数字 1(10) | 运算符 (3) | 数字 2(10) | 等号 (2) | 结果 (8)
-        ' 总宽度：33 列宽单位
+        ' 题目之间增加 2 列空白列用于间隔
         Dim subCols As Integer
         subCols = 5  ' 每个题目 5 个子列
+        Dim gapCols As Integer
+        gapCols = 2  ' 题目之间空白列数
         Dim totalExcelCols As Integer
-        totalExcelCols = colsPerPage * subCols  ' 总 Excel 列数
+        
+        ' 计算总列数：题目列 + 间隔列
+        totalExcelCols = colsPerPage * subCols + (colsPerPage - 1) * gapCols
         
         ' 设置列宽
-        For j = 1 To totalExcelCols
-            Dim subCol As Integer
-            subCol = ((j - 1) Mod 5) + 1  ' 1-5 循环
-            Select Case subCol
-                Case 1: .Columns(j).ColumnWidth = 10   ' 数字 1
-                Case 2: .Columns(j).ColumnWidth = 3    ' 运算符（居中）
-                Case 3: .Columns(j).ColumnWidth = 10   ' 数字 2
-                Case 4: .Columns(j).ColumnWidth = 2    ' 等号（居中）
-                Case 5: .Columns(j).ColumnWidth = 8    ' 结果下划线
-            End Select
-        Next j
+        Dim excelCol As Integer
+        excelCol = 1
+        For p = 1 To colsPerPage
+            ' 题目 5 列
+            .Columns(excelCol).ColumnWidth = 10   ' 数字 1
+            .Columns(excelCol + 1).ColumnWidth = 3    ' 运算符（居中）
+            .Columns(excelCol + 2).ColumnWidth = 10   ' 数字 2
+            .Columns(excelCol + 3).ColumnWidth = 2    ' 等号（居中）
+            .Columns(excelCol + 4).ColumnWidth = 8    ' 结果下划线
+            excelCol = excelCol + 5
+            
+            ' 题目之间间隔 2 列（最后一列题目后不加）
+            If p < colsPerPage Then
+                .Columns(excelCol).ColumnWidth = 1    ' 空白列 1
+                .Columns(excelCol + 1).ColumnWidth = 1  ' 空白列 2
+                excelCol = excelCol + 2
+            End If
+        Next p
         
         ' ★ V2.4.9: 1 列时居中显示（通过列偏移实现）
         ' ★ V2.4.10: 2/3 列时插入空列间隔
@@ -1054,10 +1068,10 @@ Sub GenerateQuestions()
             wsAnswer.Cells(row, col).Borders.Weight = xlThin
         End If
         
-        ' ★ V2.4.16 写入题目（方案 B：分列显示）
-        ' 计算当前题目在 Excel 列中的起始位置
+        ' ★ V2.4.17 写入题目（方案 B + 题目间隔）
+        ' 计算当前题目在 Excel 列中的起始位置（含间隔列）
         Dim startCol As Integer
-        startCol = (colInPage - 1) * subCols + 1
+        startCol = (colInPage - 1) * (subCols + gapCols) + 1
         
         ' 解析题目 "37 + 3 = "
         Dim num1 As String, op As String, num2 As String
@@ -1134,18 +1148,18 @@ Sub GenerateQuestions()
     ' wsAnswer.Columns("G:H").Hidden = True    ' 已移除
     
     ' ==================== 打印题头 ====================
-    ' ★ V2.4.16: 题头需要适配分列显示
-    Call PrintHeaderV2(wsQuestion, difficulty, practiceMode, colsPerPage, subCols)
+    ' ★ V2.4.17: 题头需要适配分列显示 + 间隔
+    Call PrintHeaderV2(wsQuestion, difficulty, practiceMode, colsPerPage, subCols, gapCols)
     
-    ' ==================== 设置打印区域（V2.4.16: 分列显示） ====================
+    ' ==================== 设置打印区域（V2.4.17: 分列显示 + 间隔） ====================
     Dim lastPrintRow As Integer
     lastPrintRow = totalRows + 2  ' 题头 2 行 + 题目行
     Dim firstPrintCol As Integer
     Dim lastPrintCol As Integer
     
-    ' ★ V2.4.16: 打印区域为所有题目列
+    ' ★ V2.4.17: 打印区域为所有题目列（含间隔列）
     firstPrintCol = 1
-    lastPrintCol = colsPerPage * subCols  ' 5 列/题目 × 题目列数
+    lastPrintCol = colsPerPage * (subCols + gapCols) - gapCols  ' 总列数减去最后的间隔
     
     With wsQuestion.PageSetup
         .PrintArea = wsQuestion.Range(wsQuestion.Cells(1, firstPrintCol), wsQuestion.Cells(lastPrintRow, lastPrintCol)).Address
@@ -1286,8 +1300,8 @@ Sub PrintHeader(ws As Worksheet, difficulty As String, practiceMode As String, c
     ws.Range("K" & infoRow).Font.Size = 10
 End Sub
 
-' ==================== 打印题头（V2.4.16 分列显示版） ====================
-Sub PrintHeaderV2(ws As Worksheet, difficulty As String, practiceMode As String, colsPerPage As Integer, subCols As Integer)
+' ==================== 打印题头（V2.4.17 分列显示 + 间隔版） ====================
+Sub PrintHeaderV2(ws As Worksheet, difficulty As String, practiceMode As String, colsPerPage As Integer, subCols As Integer, Optional gapCols As Integer = 2)
     Dim titleRow As Integer
     Dim infoRow As Integer
     Dim firstCol As Integer
@@ -1297,7 +1311,7 @@ Sub PrintHeaderV2(ws As Worksheet, difficulty As String, practiceMode As String,
     titleRow = 1
     infoRow = 2
     firstCol = 1
-    lastCol = colsPerPage * subCols  ' 5 列/题目 × 题目列数
+    lastCol = colsPerPage * (subCols + gapCols) - gapCols  ' 总列数减去最后的间隔
     
     ' ★ V2.4.16: 设置题头行高（20 磅）
     ws.Rows(titleRow).RowHeight = 20
