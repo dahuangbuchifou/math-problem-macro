@@ -1,6 +1,6 @@
 ' ============================================================
 ' 幼升小数学题生成器 - VBA 代码
-' 版本：V2.4.9.20260426.1430
+' 版本：V2.4.10.20260426.2150
 ' 文件名：数学题生成器_V2.4.bas
 ' 作者：工部尚书
 ' 创建日期：2026-04-24 19:00
@@ -9,6 +9,18 @@
 ' 支持：100以内加减法、两位数、三位数、连加连减、混合运算
 ' 特性：难度分级、专项练习、A4排版、多页生成、答案隐藏
 ' ============================================================
+' V2.4.10 更新日志（2026-04-26）：
+'   【修复】参数刷新 Bug（H3 负数概率遗漏）：GenerateQuestions 在 ClearContents
+'     前保存 H3 值，恢复时重新写入，彻底解决 H1-H9 参数丢失问题
+'   【修复】题目数字左对齐：HorizontalAlignment = xlLeft（原为 xlCenter）
+'   【新增】列间隔优化：根据列数动态插入空列
+'     - 1 列：左右各留 2 列空白（从 C 列开始）
+'     - 2 列：中间插入 2 列空白（A-B 第 1 题，E-F 第 2 题）
+'     - 3 列：每列之间插入 1 列空白（A、C、E 列）
+'     - 4 列：紧凑排列（A、B、C、D 列）
+'   【优化】列宽计算适配新布局（含空列宽度设置）
+'   【优化】打印区域 PrintArea 适配新列布局
+'   【优化】题头 PrintHeader 适配新列布局（info 行位置调整）
 ' V2.4.9 更新日志（2026-04-26）：
 '   【修复】参数刷新 Bug（H1 最大数字范围）：GenerateQuestions 在 ClearContents
 '     前保存 H1 值，恢复时重新写入，并用 savedMaxNum 覆盖 GetDifficultyParams 的默认值
@@ -671,6 +683,7 @@ Sub GenerateQuestions()
     Dim savedMaxNum As Integer        ' V2.4.9: 保存 H1 最大数字范围
     Dim colOffset As Integer          ' V2.4.9: 列偏移（1 列居中用）
     Dim colWidth As Integer           ' V2.4.9: 动态列宽
+    Dim actualCol As Integer          ' V2.4.10: 实际列号（含空列间隔）
     
     ' ============================================================
     ' ★ V2.4.3 修复：先初始化工作表对象！
@@ -682,6 +695,8 @@ Sub GenerateQuestions()
     ' 包括 H1 最大数字范围（之前遗漏导致参数被刷新）
     ' ============================================================
     savedMaxNum = Val(wsQuestion.Range("H1").Value)    ' V2.4.9: 保存 H1
+    Dim savedNegProb As Integer                        ' V2.4.10: 保存 H3 负数概率
+    savedNegProb = Val(wsQuestion.Range("H3").Value)
     difficulty = Trim(wsQuestion.Range("H5").Value)
     practiceMode = Trim(wsQuestion.Range("H6").Value)
     questionCount = Val(wsQuestion.Range("H2").Value)
@@ -706,7 +721,9 @@ Sub GenerateQuestions()
     InitParameterPanel_NoReset
     
     ' ★ V2.4.9 修复：恢复用户之前选择的所有值（包括 H1）
+    ' ★ V2.4.10 修复：恢复 H3 负数概率
     wsQuestion.Range("H1").Value = savedMaxNum
+    wsQuestion.Range("H3").Value = savedNegProb
     wsQuestion.Range("H5").Value = difficulty
     wsQuestion.Range("H6").Value = practiceMode
     wsQuestion.Range("H2").Value = questionCount
@@ -755,7 +772,7 @@ Sub GenerateQuestions()
     With wsQuestion
         .Cells.Font.Name = "微软雅黑"
         .Cells.Font.Size = 16  ' V2.4.8: 与题目页一致   ' V2.3: 12号字体（适应 25 列窄布局）
-        .Cells.HorizontalAlignment = xlCenter
+        .Cells.HorizontalAlignment = xlLeft   ' V2.4.10: 左对齐（原 xlCenter）
         .Cells.VerticalAlignment = xlCenter
         
         ' ★ V2.4.9: 根据列数动态调整列宽
@@ -765,11 +782,23 @@ Sub GenerateQuestions()
             Case 3: colWidth = 22
             Case Else: colWidth = 18  ' 4 列
         End Select
-        For j = 1 To colsPerPage
+        
+        ' ★ V2.4.10: 根据列数设置列宽（含空列）
+        Dim maxCol As Integer
+        maxCol = colsPerPage
+        Select Case colsPerPage
+            Case 1: maxCol = 4   ' A-B 空，C 题目，D-E 空
+            Case 2: maxCol = 6   ' A-B 题目 1，C-D 空，E-F 题目 2
+            Case 3: maxCol = 5   ' A 题目 1，B 空，C 题目 2，D 空，E 题目 3
+            Case 4: maxCol = 4   ' A-B-C-D 紧凑
+        End Select
+        
+        For j = 1 To maxCol
             .Columns(j).ColumnWidth = colWidth
         Next j
         
         ' ★ V2.4.9: 1 列时居中显示（通过列偏移实现）
+        ' ★ V2.4.10: 2/3 列时插入空列间隔
         If colsPerPage = 1 Then
             colOffset = 2  ' 从 C 列开始，A/B 留空实现居中
         Else
@@ -835,8 +864,17 @@ Sub GenerateQuestions()
         .Cells.Font.Color = RGB(200, 50, 50)  ' 答案用红色
         
         ' ★ V2.4.9: 答案页同步列宽（含 colOffset）
-        For j = 1 To colsPerPage
-            .Columns(j + colOffset).ColumnWidth = colWidth
+        ' ★ V2.4.10: 答案页同步列宽（含空列）
+        Dim ansMaxCol As Integer
+        ansMaxCol = colsPerPage
+        Select Case colsPerPage
+            Case 1: ansMaxCol = 4
+            Case 2: ansMaxCol = 6
+            Case 3: ansMaxCol = 5
+            Case 4: ansMaxCol = 4
+        End Select
+        For j = 1 To ansMaxCol
+            .Columns(j).ColumnWidth = colWidth
         Next j
         
         For j = 1 To totalRows
@@ -860,7 +898,27 @@ Sub GenerateQuestions()
         
         ' 考虑题头偏移（2 行）+ 分隔行偏移 + 列偏移（1 列居中）
         row = rowInPage + 2 + (currentPage - 1) * (ROWS_PER_PAGE + 1)
-        col = colInPage + colOffset    ' ★ V2.4.9: 加列偏移实现 1 列居中
+        
+        ' ★ V2.4.10: 根据列数计算实际列号（含空列间隔）
+        Select Case colsPerPage
+            Case 1
+                actualCol = colInPage + colOffset  ' 从 C 列开始
+            Case 2
+                ' A-B 题目 1，C-D 空，E-F 题目 2
+                If colInPage = 1 Then
+                    actualCol = 1  ' A 列
+                Else
+                    actualCol = 5  ' E 列（中间空 C-D）
+                End If
+            Case 3
+                ' A 题目 1，B 空，C 题目 2，D 空，E 题目 3
+                actualCol = (colInPage - 1) * 2 + 1
+            Case 4
+                actualCol = colInPage  ' 紧凑排列
+            Case Else
+                actualCol = colInPage + colOffset
+        End Select
+        col = actualCol
         
         ' 根据练习模式生成题目
         questionText = ""
@@ -963,13 +1021,30 @@ Sub GenerateQuestions()
     ' ==================== 打印题头 ====================
     Call PrintHeader(wsQuestion, difficulty, practiceMode, colsPerPage, colOffset)
     
-    ' ==================== 设置打印区域（V2.4.9: 含 colOffset） ====================
+    ' ==================== 设置打印区域（V2.4.10: 含空列间隔） ====================
     Dim lastPrintRow As Integer
     lastPrintRow = totalRows + 2  ' 题头 2 行 + 题目行
     Dim firstPrintCol As Integer
-    firstPrintCol = 1 + colOffset
     Dim lastPrintCol As Integer
-    lastPrintCol = colsPerPage + colOffset
+    
+    ' ★ V2.4.10: 根据列数计算打印区域
+    Select Case colsPerPage
+        Case 1
+            firstPrintCol = 3  ' C 列
+            lastPrintCol = 3
+        Case 2
+            firstPrintCol = 1  ' A 列
+            lastPrintCol = 6   ' F 列（含空列）
+        Case 3
+            firstPrintCol = 1  ' A 列
+            lastPrintCol = 5   ' E 列（含空列）
+        Case 4
+            firstPrintCol = 1  ' A 列
+            lastPrintCol = 4   ' D 列
+        Case Else
+            firstPrintCol = 1 + colOffset
+            lastPrintCol = colsPerPage + colOffset
+    End Select
     
     With wsQuestion.PageSetup
         .PrintArea = wsQuestion.Range(wsQuestion.Cells(1, firstPrintCol), wsQuestion.Cells(lastPrintRow, lastPrintCol)).Address
@@ -985,7 +1060,7 @@ Sub GenerateQuestions()
         .FitToPagesTall = False  ' 不限制高度
     End With
     
-    ' 答案页同样设置（V2.4.9: 含 colOffset）
+    ' 答案页同样设置（V2.4.10: 含空列间隔）
     With wsAnswer.PageSetup
         .PrintArea = wsAnswer.Range(wsAnswer.Cells(1, firstPrintCol), wsAnswer.Cells(lastPrintRow, lastPrintCol)).Address
         .TopMargin = Application.CentimetersToPoints(1.0)
@@ -1039,8 +1114,25 @@ Sub PrintHeader(ws As Worksheet, difficulty As String, practiceMode As String, c
     
     titleRow = 1
     infoRow = 2
-    firstCol = 1 + colOffset    ' ★ V2.4.9: 考虑列偏移
-    lastCol = colsPerPage + colOffset
+    
+    ' ★ V2.4.10: 根据列数计算题头列范围
+    Select Case colsPerPage
+        Case 1
+            firstCol = 3  ' C 列
+            lastCol = 3
+        Case 2
+            firstCol = 1  ' A 列
+            lastCol = 6   ' F 列
+        Case 3
+            firstCol = 1  ' A 列
+            lastCol = 5   ' E 列
+        Case 4
+            firstCol = 1  ' A 列
+            lastCol = 4   ' D 列
+        Case Else
+            firstCol = 1 + colOffset
+            lastCol = colsPerPage + colOffset
+    End Select
     
     ' 禁用警告（合并单元格时）
     Application.DisplayAlerts = False
